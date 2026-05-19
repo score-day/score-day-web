@@ -28,47 +28,49 @@ export default function AuthPage({ onAuth }: { onAuth: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center px-6">
+    <div className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-semibold tracking-tight mb-1">Score Day</h1>
-        <p className="text-zinc-400 text-sm mb-8">
+        <h1 className="text-2xl font-semibold tracking-tight sd-display mb-1">Score Day</h1>
+        <p className="sd-text-3 text-sm mb-8">
           {mode === "login" ? "Sign in to your account" : "Create a new account"}
         </p>
 
         <form onSubmit={submit} className="flex flex-col gap-4">
           {mode === "register" && (
             <div>
-              <label className="block text-sm text-zinc-400 mb-1">Name <span className="text-zinc-600">(optional)</span></label>
+              <label className="block text-sm sd-text-2 mb-1">
+                Name <span className="sd-text-4">(optional)</span>
+              </label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 maxLength={40}
-                className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"
+                className="sd-input rounded-md px-3 py-2 text-sm w-full focus:outline-none"
                 placeholder="What should we call you?"
               />
             </div>
           )}
           <div>
-            <label className="block text-sm text-zinc-400 mb-1">Email</label>
+            <label className="block text-sm sd-text-2 mb-1">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"
+              className="sd-input rounded-md px-3 py-2 text-sm w-full focus:outline-none"
               placeholder="you@example.com"
             />
           </div>
           <div>
-            <label className="block text-sm text-zinc-400 mb-1">Password</label>
+            <label className="block text-sm sd-text-2 mb-1">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500"
+              className="sd-input rounded-md px-3 py-2 text-sm w-full focus:outline-none"
               placeholder="Min. 6 characters"
             />
           </div>
@@ -82,16 +84,16 @@ export default function AuthPage({ onAuth }: { onAuth: () => void }) {
           <button
             type="submit"
             disabled={loading}
-            className="bg-zinc-100 text-zinc-900 rounded-md py-2 text-sm font-medium hover:bg-white disabled:opacity-50 transition"
+            className="sd-btn-accent rounded-md py-2 text-sm font-medium transition"
           >
             {loading ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
           </button>
         </form>
 
-        <p className="text-center text-sm text-zinc-500 mt-6">
+        <p className="text-center text-sm sd-text-3 mt-6">
           {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
           <button
-            className="text-zinc-300 hover:text-white underline"
+            className="sd-text-1 hover:text-[var(--accent)] underline transition"
             onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(null); }}
           >
             {mode === "login" ? "Register" : "Sign in"}

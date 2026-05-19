@@ -1,7 +1,291 @@
+/* ── Google Fonts ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Rajdhani:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 html, body, #root {
   height: 100%;
+}
+
+/* ══════════════════════════════════════════════
+   LIGHT — Clarity
+══════════════════════════════════════════════ */
+.theme-light {
+  --app-bg:      #f6f7f9;
+  --surface-1:   #ffffff;
+  --surface-2:   #f0f1f3;
+  --surface-3:   #e5e7eb;
+  --text-1:      #0a0b0d;
+  --text-2:      #374151;
+  --text-3:      #6b7280;
+  --text-4:      #9ca3af;
+  --border-1:    #e5e7eb;
+  --border-2:    #d1d5db;
+  --accent:      #059669;
+  --accent-h:    #047857;
+  --accent-txt:  #ffffff;
+  --score-high:  #059669;
+  --score-mid:   #d97706;
+  --font-body:   'Inter', system-ui, sans-serif;
+  --font-display:'Inter', system-ui, sans-serif;
+  --font-mono:   ui-monospace, 'Cascadia Code', monospace;
+  --divider:     #e5e7eb;
+}
+
+/* ══════════════════════════════════════════════
+   DARK KNIGHT — Onyx Protocol
+══════════════════════════════════════════════ */
+.theme-dark-knight {
+  --app-bg:      #050608;
+  --surface-1:   #0c0d10;
+  --surface-2:   #12141a;
+  --surface-3:   #1a1d26;
+  --text-1:      #c8cdd6;
+  --text-2:      #8a95aa;
+  --text-3:      #4a5268;
+  --text-4:      #2a3040;
+  --border-1:    #1a1d26;
+  --border-2:    #0e1018;
+  --accent:      #2e83ff;
+  --accent-h:    #1a6ee0;
+  --accent-txt:  #ffffff;
+  --score-high:  #2e83ff;
+  --score-mid:   #f59e0b;
+  --font-body:   system-ui, sans-serif;
+  --font-display:'Oswald', system-ui, sans-serif;
+  --font-mono:   'JetBrains Mono', ui-monospace, monospace;
+  --divider:     #1a1d26;
+}
+
+/* ══════════════════════════════════════════════
+   SOLO LEVELING — Shadow Sovereign
+══════════════════════════════════════════════ */
+.theme-solo-leveling {
+  --app-bg:      #04040c;
+  --surface-1:   #0a0a16;
+  --surface-2:   #0e0e1c;
+  --surface-3:   #141428;
+  --text-1:      #e0e7ff;
+  --text-2:      #a5b4fc;
+  --text-3:      #6b7dab;
+  --text-4:      #3d4a6b;
+  --border-1:    #1a1a30;
+  --border-2:    #0e0e20;
+  --accent:      #a855f7;
+  --accent-h:    #9333ea;
+  --accent-txt:  #ffffff;
+  --score-high:  #a855f7;
+  --score-mid:   #22d3ee;
+  --font-body:   'Rajdhani', system-ui, sans-serif;
+  --font-display:'Cinzel', serif;
+  --font-mono:   'JetBrains Mono', ui-monospace, monospace;
+  --divider:     #1a1a30;
+}
+
+/* ══════════════════════════════════════════════
+   SEMANTIC UTILITY CLASSES
+   (defined after @tailwind utilities so they win
+    over same-specificity Tailwind classes)
+══════════════════════════════════════════════ */
+
+.sd-bg {
+  background-color: var(--app-bg);
+  color: var(--text-1);
+  font-family: var(--font-body);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.sd-display {
+  font-family: var(--font-display);
+}
+
+/* surfaces */
+.sd-surface   { background-color: var(--surface-1); border-color: var(--border-1); }
+.sd-surface-2 { background-color: var(--surface-2); border-color: var(--border-1); }
+.sd-border    { border-color: var(--border-1); }
+.sd-border-2  { border-color: var(--border-2); }
+.sd-divider   { border-color: var(--divider); }
+
+/* text */
+.sd-text-1 { color: var(--text-1); }
+.sd-text-2 { color: var(--text-2); }
+.sd-text-3 { color: var(--text-3); }
+.sd-text-4 { color: var(--text-4); }
+.sd-accent { color: var(--accent); }
+
+/* score */
+.sd-score-high { color: var(--score-high); }
+.sd-score-mid  { color: var(--score-mid); }
+
+/* inputs */
+.sd-input {
+  background-color: var(--surface-2);
+  border: 1px solid var(--border-1);
+  color: var(--text-1);
+  transition: border-color 0.15s;
+}
+.sd-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.sd-input::placeholder { color: var(--text-4); }
+.sd-input:disabled     { opacity: 0.5; }
+select.sd-input option {
+  background-color: var(--surface-2);
+  color: var(--text-1);
+}
+
+/* primary action button (accent-colored) */
+.sd-btn-accent {
+  background-color: var(--accent);
+  color: var(--accent-txt);
+  transition: background-color 0.15s, opacity 0.15s;
+}
+.sd-btn-accent:hover:not(:disabled) { background-color: var(--accent-h); }
+.sd-btn-accent:disabled             { opacity: 0.45; cursor: not-allowed; }
+
+/* secondary / surface button */
+.sd-btn-surface {
+  background-color: var(--surface-2);
+  border: 1px solid var(--border-1);
+  color: var(--text-1);
+  transition: background-color 0.15s;
+}
+.sd-btn-surface:hover:not(:disabled) { background-color: var(--surface-3); }
+.sd-btn-surface:disabled             { opacity: 0.45; cursor: not-allowed; }
+
+/* tab buttons */
+.sd-tab        { color: var(--text-3); background: transparent; }
+.sd-tab:hover  { color: var(--text-1); background-color: var(--surface-2); }
+.sd-tab.active { color: var(--text-1); background-color: var(--surface-3); }
+
+/* status chip (offline, sync, streak) */
+.sd-chip {
+  background-color: var(--surface-2);
+  border: 1px solid var(--border-1);
+  color: var(--text-3);
+}
+
+/* checkbox checked state */
+.sd-check-on {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-txt);
+}
+.sd-check-off {
+  border-color: var(--text-3);
+}
+
+/* ══════════════════════════════════════════════
+   BOTTOM NAVIGATION BAR
+══════════════════════════════════════════════ */
+
+.sd-bnav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  background-color: var(--surface-1);
+  border-top: 1px solid var(--border-1);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.sd-bnav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 4px 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  color: var(--text-3);
+  transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sd-bnav-item.active {
+  color: var(--accent);
+}
+
+.sd-bnav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s;
+}
+
+.sd-bnav-item.active .sd-bnav-icon {
+  transform: translateY(-1px);
+}
+
+.sd-bnav-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.sd-bnav-pip {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background-color: var(--accent);
+}
+
+/* Dark Knight — blue glow on active nav item */
+.theme-dark-knight .sd-bnav-item.active .sd-bnav-icon svg {
+  filter: drop-shadow(0 0 6px var(--accent));
+}
+
+/* Solo Leveling — violet glow on active nav item */
+.theme-solo-leveling .sd-bnav-item.active .sd-bnav-icon svg {
+  filter: drop-shadow(0 0 6px var(--accent));
+}
+
+/* Light — subtle border shadow on nav */
+.theme-light .sd-bnav {
+  box-shadow: 0 -1px 8px rgba(0,0,0,0.06);
+}
+
+/* Dark Knight — subtle scan-line overlay on root */
+.theme-dark-knight.sd-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.06) 0px,
+    rgba(0, 0, 0, 0.06) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Solo Leveling — faint violet glow on surfaces */
+.theme-solo-leveling .sd-surface {
+  box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.07),
+              0 2px 12px rgba(168, 85, 247, 0.05);
+}
+
+/* Light — lifted card shadow */
+.theme-light .sd-surface {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07),
+              0 1px 2px rgba(0, 0, 0, 0.04);
 }

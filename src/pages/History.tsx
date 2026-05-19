@@ -11,12 +11,15 @@ import {
 } from "recharts";
 import { api } from "../lib/api";
 import { setThreshold as saveThreshold } from "../lib/settings";
+import { getThemeColors } from "../lib/theme";
+import type { Theme } from "../lib/theme";
 import type { CategoryStat, Day, HistoryEntry, Task } from "../lib/types";
 
 interface Props {
   threshold: number;
   onThresholdChange: (v: number) => void;
   onGoToToday: () => void;
+  theme: Theme;
 }
 
 const CAT_COLORS: Record<string, string> = {
@@ -24,8 +27,8 @@ const CAT_COLORS: Record<string, string> = {
   Personal:      "bg-violet-500/20 text-violet-300 border-violet-500/30",
   Health:        "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
   Learning:      "bg-amber-500/20 text-amber-300 border-amber-500/30",
-  Other:         "bg-zinc-500/20 text-zinc-300 border-zinc-500/30",
-  Uncategorized: "bg-zinc-800/60 text-zinc-500 border-zinc-700/30",
+  Other:         "bg-[var(--surface-2)] text-[var(--text-3)] border-[var(--border-1)]",
+  Uncategorized: "bg-[var(--surface-2)] text-[var(--text-4)] border-[var(--border-1)]",
 };
 
 const CAT_BAR: Record<string, string> = {
@@ -33,13 +36,13 @@ const CAT_BAR: Record<string, string> = {
   Personal:      "bg-violet-500",
   Health:        "bg-emerald-500",
   Learning:      "bg-amber-500",
-  Other:         "bg-zinc-500",
-  Uncategorized: "bg-zinc-700",
+  Other:         "bg-[var(--text-3)]",
+  Uncategorized: "bg-[var(--surface-3)]",
 };
 
 function CategoryBadge({ cat }: { cat: string | null }) {
   const label = cat || "Uncategorized";
-  const cls = CAT_COLORS[label] ?? "bg-zinc-500/20 text-zinc-300 border-zinc-500/30";
+  const cls = CAT_COLORS[label] ?? "bg-[var(--surface-2)] text-[var(--text-3)] border-[var(--border-1)]";
   return (
     <span className={`text-[10px] px-1.5 py-0.5 rounded border ${cls}`}>{label}</span>
   );
@@ -48,7 +51,7 @@ function CategoryBadge({ cat }: { cat: string | null }) {
 const RANGE_OPTIONS = [30, 90, 365] as const;
 type Range = typeof RANGE_OPTIONS[number];
 
-export default function HistoryPage({ threshold, onThresholdChange, onGoToToday }: Props) {
+export default function HistoryPage({ threshold, onThresholdChange, onGoToToday, theme }: Props) {
   const [rows, setRows] = useState<HistoryEntry[]>([]);
   const [categories, setCategories] = useState<CategoryStat[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -59,6 +62,8 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday 
   const [dayDetail, setDayDetail] = useState<Day | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailErr, setDetailErr] = useState<string | null>(null);
+
+  const tc = getThemeColors(theme);
 
   useEffect(() => {
     setSelectedDate(null);
@@ -129,7 +134,7 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday 
     <div className="space-y-8">
       <div>
         <div className="flex items-center justify-between mb-1">
-          <div className="text-sm text-zinc-500">Last {range} days</div>
+          <div className="text-sm sd-text-3">Last {range} days</div>
           <div className="flex gap-1">
             {RANGE_OPTIONS.map((r) => (
               <button
@@ -137,8 +142,8 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday 
                 onClick={() => setRange(r)}
                 className={`px-2.5 py-1 rounded text-xs transition ${
                   range === r
-                    ? "bg-zinc-700 text-zinc-100"
-                    : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
+                    ? "bg-[var(--surface-3)] sd-text-1"
+                    : "sd-text-3 hover:text-[var(--text-1)] hover:bg-[var(--surface-2)]"
                 }`}
               >
                 {r}d
@@ -148,13 +153,13 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday 
         </div>
         <div className="mt-1 flex items-baseline gap-4">
           <div className="text-3xl font-semibold tabular-nums">
-            {monthAvg.toFixed(1)}<span className="text-zinc-500 text-lg">% avg</span>
+            {monthAvg.toFixed(1)}<span className="sd-text-3 text-lg">% avg</span>
           </div>
           {prevMonthAvg > 0 && (
             <div
               className={
                 "text-sm " +
-                (delta > 0 ? "text-emerald-400" : delta < 0 ? "text-red-400" : "text-zinc-400")
+                (delta > 0 ? "text-emerald-400" : delta < 0 ? "text-red-400" : "sd-text-3")
               }
             >
               {delta > 0 ? "▲" : delta < 0 ? "▼" : "·"} {Math.abs(delta).toFixed(1)}pp vs prior {range}d
@@ -171,7 +176,7 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday 
               <div className="text-xl font-semibold tabular-nums text-emerald-400">
                 {bestDay.total > 0 ? Math.round((bestDay.score / bestDay.total) * 100) : 0}%
               </div>
-              <div className="text-xs text-zinc-500 mt-0.5">{bestDay.date}</div>
+              <div className="text-xs sd-text-3 mt-0.5">{bestDay.date}</div>
             </div>
           )}
           {worstDay && (
@@ -180,7 +185,7 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday 
               <div className="text-xl font-semibold tabular-nums text-red-400">
                 {worstDay.total > 0 ? Math.round((worstDay.score / worstDay.total) * 100) : 0}%
               </div>
-              <div className="text-xs text-zinc-500 mt-0.5">{worstDay.date}</div>
+              <div className="text-xs sd-text-3 mt-0.5">{worstDay.date}</div>
             </div>
           )}
         </div>
@@ -189,15 +194,15 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday 
       {err && <div className="text-sm text-red-400">{err}</div>}
 
       {chartData.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/30 px-6 py-12 text-center">
+        <div className="rounded-xl border border-dashed sd-border bg-[var(--surface-1)] px-6 py-12 text-center">
           <div className="text-4xl mb-4">📊</div>
-          <div className="text-base font-medium text-zinc-300 mb-2">No history yet</div>
-          <p className="text-sm text-zinc-500 max-w-sm mx-auto mb-6">
+          <div className="text-base font-medium sd-text-1 mb-2">No history yet</div>
+          <p className="text-sm sd-text-3 max-w-sm mx-auto mb-6">
             Your chart, heatmap, and streaks will appear here once you complete and lock your first day.
           </p>
           <button
             onClick={onGoToToday}
-            className="px-5 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-500 transition"
+            className="px-5 py-2 rounded-lg sd-btn-accent text-sm font-medium transition"
           >
             Go plan today →
           </button>
@@ -210,63 +215,60 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday 
             threshold={threshold}
             selectedDate={selectedDate}
             onSelect={handleSelectDate}
+            heatmapHigh={tc.heatmapHigh}
+            heatmapMid={tc.heatmapMid}
           />
 
-          {/* ── Day detail panel ── */}
           {selectedDate && (
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
+            <div className="rounded-lg border sd-border bg-[var(--surface-1)] p-4">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-sm font-medium text-zinc-200">{selectedDate}</div>
+                <div className="text-sm font-medium sd-text-1">{selectedDate}</div>
                 <button
                   onClick={() => { setSelectedDate(null); setDayDetail(null); }}
-                  className="text-zinc-600 hover:text-zinc-300 text-xs"
+                  className="sd-text-4 hover:text-[var(--text-1)] text-xs transition"
                 >
                   ✕ close
                 </button>
               </div>
-
-              {detailLoading && <div className="text-sm text-zinc-500">Loading…</div>}
+              {detailLoading && <div className="text-sm sd-text-3">Loading…</div>}
               {detailErr && <div className="text-sm text-red-400">{detailErr}</div>}
-
-                      {dayDetail && (
-                <DayDetailPanel day={dayDetail} />
-              )}
+              {dayDetail && <DayDetailPanel day={dayDetail} />}
             </div>
           )}
 
-          <div className="h-64 rounded-md border border-zinc-800 p-4">
+          <div className="h-64 rounded-md border sd-border p-4">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
-                <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-                <XAxis dataKey="date" stroke="#71717a" fontSize={11} />
-                <YAxis domain={[0, 100]} stroke="#71717a" fontSize={11} tickFormatter={(v) => `${v}%`} />
+                <CartesianGrid stroke={tc.chartGrid} strokeDasharray="3 3" />
+                <XAxis dataKey="date" stroke={tc.chartAxis} fontSize={11} />
+                <YAxis domain={[0, 100]} stroke={tc.chartAxis} fontSize={11} tickFormatter={(v) => `${v}%`} />
                 <Tooltip
                   contentStyle={{
-                    background: "#18181b",
-                    border: "1px solid #3f3f46",
+                    background: tc.chartTooltipBg,
+                    border: `1px solid ${tc.chartTooltipBorder}`,
                     borderRadius: 6,
                     fontSize: 12,
+                    color: "var(--text-1)",
                   }}
                   formatter={(value: number) => [`${value}%`]}
                 />
                 <ReferenceLine
                   y={threshold}
-                  stroke="#10b981"
+                  stroke={tc.chartThreshold}
                   strokeDasharray="2 4"
-                  label={{ value: `${threshold}%`, fill: "#10b981", fontSize: 10, position: "insideTopRight" }}
+                  label={{ value: `${threshold}%`, fill: tc.chartThreshold, fontSize: 10, position: "insideTopRight" }}
                 />
-                <Line type="monotone" dataKey="score" stroke="#a1a1aa" strokeWidth={1.5} dot={{ r: 2 }} />
-                <Line type="monotone" dataKey="rolling" stroke="#10b981" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="score" stroke={tc.chartLine} strokeWidth={1.5} dot={{ r: 2 }} />
+                <Line type="monotone" dataKey="rolling" stroke={tc.chartRolling} strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </>
       )}
 
-      {/* ── Category breakdown ── */}
       {categories.length > 0 && (
         <section>
-          <div className="text-xs uppercase tracking-wider text-zinc-500 mb-3">
+          <div className="text-xs uppercase tracking-wider sd-text-3 mb-3">
             Category breakdown · last {range} days
           </div>
           <div className="space-y-3">
@@ -274,16 +276,16 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday 
               const pct = c.total_weight > 0
                 ? Math.round((c.completed_weight / c.total_weight) * 100)
                 : 0;
-              const barColor = CAT_BAR[c.category] ?? "bg-zinc-500";
+              const barColor = CAT_BAR[c.category] ?? "bg-[var(--text-3)]";
               return (
                 <div key={c.category}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-zinc-300">{c.category}</span>
-                    <span className="text-xs text-zinc-500 tabular-nums">
+                    <span className="text-sm sd-text-2">{c.category}</span>
+                    <span className="text-xs sd-text-3 tabular-nums">
                       {c.completed_weight}/{c.total_weight} pts · {pct}%
                     </span>
                   </div>
-                  <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-[var(--surface-2)] rounded-full overflow-hidden">
                     <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
                   </div>
                 </div>
@@ -293,11 +295,10 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday 
         </section>
       )}
 
-      {/* ── Streak settings ── */}
-      <section className="border-t border-zinc-800 pt-6">
-        <div className="text-xs uppercase tracking-wider text-zinc-500 mb-3">Streak settings</div>
+      <section className="border-t sd-divider pt-6">
+        <div className="text-xs uppercase tracking-wider sd-text-3 mb-3">Streak settings</div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-zinc-400">Count days scoring ≥</span>
+          <span className="text-sm sd-text-2">Count days scoring ≥</span>
           <input
             type="number"
             min={1}
@@ -306,11 +307,11 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday 
             onChange={(e) => setLocalThreshold(Number(e.target.value))}
             onBlur={commitThreshold}
             onKeyDown={(e) => e.key === "Enter" && commitThreshold()}
-            className="w-16 bg-zinc-900 border border-zinc-800 rounded-md px-2 py-1 text-sm tabular-nums text-center focus:outline-none focus:border-zinc-600"
+            className="w-16 sd-input rounded-md px-2 py-1 text-sm tabular-nums text-center"
           />
-          <span className="text-sm text-zinc-400">% toward the streak</span>
+          <span className="text-sm sd-text-2">% toward the streak</span>
         </div>
-        <p className="mt-1.5 text-xs text-zinc-600">Press Enter or click away to apply. Green line on the chart moves too.</p>
+        <p className="mt-1.5 text-xs sd-text-4">Press Enter or click away to apply.</p>
       </section>
     </div>
   );
@@ -331,9 +332,9 @@ function DayDetailPanel({ day }: { day: Day }) {
     <div className="space-y-4">
       <div className="flex items-center gap-4">
         <div className="text-2xl font-semibold tabular-nums">
-          {pct}<span className="text-zinc-500 text-base">%</span>
+          {pct}<span className="sd-text-3 text-base">%</span>
         </div>
-        <div className="text-xs text-zinc-500">
+        <div className="text-xs sd-text-3">
           {day.score}/{day.total} pts · {day.tasks.length} tasks · {day.status}
         </div>
       </div>
@@ -347,24 +348,24 @@ function DayDetailPanel({ day }: { day: Day }) {
       )}
 
       {day.note && (
-        <div className="rounded-md border border-zinc-800 bg-zinc-950/60 px-3 py-2">
-          <div className="text-xs text-zinc-600 uppercase tracking-wider mb-1">Reflection</div>
-          <p className="text-sm text-zinc-400 leading-relaxed">{day.note}</p>
+        <div className="rounded-md border sd-border bg-[var(--surface-2)] px-3 py-2">
+          <div className="text-xs sd-text-4 uppercase tracking-wider mb-1">Reflection</div>
+          <p className="text-sm sd-text-3 leading-relaxed">{day.note}</p>
         </div>
       )}
 
       {Object.keys(catMap).length > 1 && (
-        <div className="border-t border-zinc-800 pt-3 space-y-2">
-          <div className="text-xs text-zinc-600 uppercase tracking-wider">By category</div>
+        <div className="border-t sd-divider pt-3 space-y-2">
+          <div className="text-xs sd-text-4 uppercase tracking-wider">By category</div>
           {Object.entries(catMap).map(([cat, v]) => {
             const p = v.total > 0 ? Math.round((v.done / v.total) * 100) : 0;
             return (
               <div key={cat} className="flex items-center gap-2 text-xs">
                 <CategoryBadge cat={cat} />
-                <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${p}%` }} />
+                <div className="flex-1 h-1 bg-[var(--surface-2)] rounded-full overflow-hidden">
+                  <div className="h-full bg-[var(--accent)] rounded-full" style={{ width: `${p}%` }} />
                 </div>
-                <span className="text-zinc-500 tabular-nums w-8 text-right">{p}%</span>
+                <span className="sd-text-3 tabular-nums w-8 text-right">{p}%</span>
               </div>
             );
           })}
@@ -380,11 +381,11 @@ function TaskRow({ task }: { task: Task }) {
       <span className={task.completed ? "text-emerald-400" : "text-red-500"}>
         {task.completed ? "✓" : "✗"}
       </span>
-      <span className={`flex-1 ${task.completed ? "text-zinc-200" : "text-zinc-500 line-through"}`}>
+      <span className={`flex-1 ${task.completed ? "sd-text-1" : "sd-text-3 line-through"}`}>
         {task.title}
       </span>
       {task.category && <CategoryBadge cat={task.category} />}
-      <span className="text-xs text-zinc-600 tabular-nums">{task.weight}pt</span>
+      <span className="text-xs sd-text-4 tabular-nums">{task.weight}pt</span>
     </div>
   );
 }
@@ -395,29 +396,33 @@ function Heatmap({
   threshold,
   selectedDate,
   onSelect,
+  heatmapHigh,
+  heatmapMid,
 }: {
   rows: HistoryEntry[];
   range: number;
   threshold: number;
   selectedDate: string | null;
   onSelect: (date: string) => void;
+  heatmapHigh: string;
+  heatmapMid: string;
 }) {
   const thresholdFrac = threshold / 100;
   return (
     <div>
-      <div className="text-xs uppercase tracking-wider text-zinc-500 mb-2">
-        {range}-day heatmap · <span className="normal-case text-zinc-600">click a day to see details</span>
+      <div className="text-xs uppercase tracking-wider sd-text-3 mb-2">
+        {range}-day heatmap · <span className="normal-case sd-text-4">click a day to see details</span>
       </div>
       <div className="flex flex-wrap gap-1">
         {rows.map((r) => {
           const pct = r.locked && r.total > 0 ? r.score / r.total : 0;
           const isSelected = r.date === selectedDate;
           const bg = !r.locked
-            ? "bg-zinc-900 border-zinc-800"
+            ? "bg-[var(--surface-1)] border-[var(--border-1)]"
             : pct >= thresholdFrac
-            ? "bg-emerald-500/80 border-emerald-500"
+            ? heatmapHigh
             : pct >= thresholdFrac * 0.75
-            ? "bg-emerald-700/70 border-emerald-700"
+            ? heatmapMid
             : pct >= 0.4
             ? "bg-amber-700/70 border-amber-700"
             : "bg-red-900/60 border-red-900";
