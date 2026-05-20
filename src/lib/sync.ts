@@ -73,6 +73,9 @@ export async function syncNow(): Promise<number> {
           case "lockDay":
             await rawApi.lockDay(mutation.dayId);
             break;
+          case "restDay":
+            await rawApi.restDay(mutation.dayId);
+            break;
           case "saveNote":
             await rawApi.saveNote(mutation.dayId, mutation.note);
             break;

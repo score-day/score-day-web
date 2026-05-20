@@ -1,4 +1,4 @@
-export type DayStatus = "planning" | "active" | "locked";
+export type DayStatus = "planning" | "active" | "locked" | "rest";
 
 export interface Task {
   id: number;
@@ -27,6 +27,7 @@ export interface HistoryEntry {
   score: number;
   total: number;
   locked: boolean;
+  rest: boolean;
 }
 
 export interface Streak {
@@ -75,7 +76,7 @@ export interface FriendActivity {
   username: string | null;
   streak: number;
   avg_7d: number | null;
-  day_status: "planning" | "active" | "locked" | null;
+  day_status: "planning" | "active" | "locked" | "rest" | null;
   score_pct: number | null;
   assigned_task_title: string | null;
   assigned_task_completed: boolean | null;
@@ -111,6 +112,14 @@ export interface FriendTask {
   assigned_task_id: number | null;
 }
 
+export interface Achievement {
+  id: string;
+  icon: string;
+  name: string;
+  description: string;
+  unlocked: boolean;
+}
+
 // ── Offline mutation queue ──
 
 export type MutationData =
@@ -119,6 +128,7 @@ export type MutationData =
   | { type: "deleteTask"; taskId: number }
   | { type: "startDay"; dayId: number }
   | { type: "lockDay"; dayId: number }
+  | { type: "restDay"; dayId: number }
   | { type: "saveNote"; dayId: number; note: string }
   | { type: "updateMe"; patch: { username: string | null } };
 

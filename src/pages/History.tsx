@@ -22,13 +22,13 @@ interface Props {
   theme: Theme;
 }
 
-const CAT_COLORS: Record<string, string> = {
-  Work:          "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  Personal:      "bg-violet-500/20 text-violet-300 border-violet-500/30",
-  Health:        "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-  Learning:      "bg-amber-500/20 text-amber-300 border-amber-500/30",
-  Other:         "bg-[var(--surface-2)] text-[var(--text-3)] border-[var(--border-1)]",
-  Uncategorized: "bg-[var(--surface-2)] text-[var(--text-4)] border-[var(--border-1)]",
+const CAT_BADGE: Record<string, { light: string; dark: string }> = {
+  Work:          { light: "bg-blue-500/15 text-blue-700 border-blue-500/25",          dark: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
+  Personal:      { light: "bg-violet-500/15 text-violet-700 border-violet-500/25",    dark: "bg-violet-500/20 text-violet-300 border-violet-500/30" },
+  Health:        { light: "bg-emerald-500/15 text-emerald-700 border-emerald-500/25", dark: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" },
+  Learning:      { light: "bg-amber-500/15 text-amber-700 border-amber-500/25",       dark: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
+  Other:         { light: "bg-[var(--surface-2)] text-[var(--text-3)] border-[var(--border-1)]", dark: "bg-[var(--surface-2)] text-[var(--text-3)] border-[var(--border-1)]" },
+  Uncategorized: { light: "bg-[var(--surface-2)] text-[var(--text-4)] border-[var(--border-1)]", dark: "bg-[var(--surface-2)] text-[var(--text-4)] border-[var(--border-1)]" },
 };
 
 const CAT_BAR: Record<string, string> = {
@@ -40,9 +40,10 @@ const CAT_BAR: Record<string, string> = {
   Uncategorized: "bg-[var(--surface-3)]",
 };
 
-function CategoryBadge({ cat }: { cat: string | null }) {
+function CategoryBadge({ cat, theme }: { cat: string | null; theme: Theme }) {
   const label = cat || "Uncategorized";
-  const cls = CAT_COLORS[label] ?? "bg-[var(--surface-2)] text-[var(--text-3)] border-[var(--border-1)]";
+  const variants = CAT_BADGE[label] ?? CAT_BADGE.Other;
+  const cls = theme === "light" ? variants.light : variants.dark;
   return (
     <span className={`text-[10px] px-1.5 py-0.5 rounded border ${cls}`}>{label}</span>
   );
@@ -92,7 +93,7 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday,
     }
   }
 
-  const { chartData, monthAvg, prevMonthAvg, delta, bestDay, worstDay } = useMemo(() => {
+  const { chartData, monthAvg, prevMonthAvg, delta, bestDay, worstDay, percentile, weekdayStats, bestWeekday, worstWeekday } = useMemo(() => {
     const locked = rows.filter((r) => r.locked);
     const toPct = (r: HistoryEntry) =>
       r.total > 0 ? Math.round((r.score / r.total) * 100) : 0;
@@ -120,7 +121,36 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday,
       ? lockedWithScore.reduce((a, b) => toPct(a) <= toPct(b) ? a : b)
       : null;
 
-    return { chartData: data, monthAvg: m, prevMonthAvg: p, delta: m - p, bestDay: best, worstDay: worst };
+    // Percentile: where does the period avg rank among individual locked days in this range?
+    const allPcts = lockedWithScore.map(toPct);
+    const beaten = allPcts.filter((s) => m >= s).length;
+    const pct = allPcts.length >= 3 ? Math.round((beaten / allPcts.length) * 100) : null;
+
+    // Weekday pattern: avg score per day-of-week (Mon–Sun), min 2 samples to show
+    const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const byDow: Record<number, number[]> = {};
+    for (const r of lockedWithScore) {
+      const dow = new Date(r.date + "T00:00:00").getDay();
+      if (!byDow[dow]) byDow[dow] = [];
+      byDow[dow].push(toPct(r));
+    }
+    // Reorder Mon(1)…Sun(0) for display
+    const orderedDows = [1, 2, 3, 4, 5, 6, 0];
+    const wdStats = orderedDows.map((dow) => {
+      const scores = byDow[dow] ?? [];
+      const a = scores.length >= 2
+        ? Math.round(scores.reduce((s, x) => s + x, 0) / scores.length)
+        : null;
+      return { name: DOW_LABELS[dow].slice(0, 1), fullName: DOW_LABELS[dow], avg: a, count: scores.length };
+    });
+    const withData = wdStats.filter((d) => d.avg !== null);
+    const bestWd = withData.length ? withData.reduce((a, b) => a.avg! >= b.avg! ? a : b) : null;
+    const worstWd = withData.length > 1 ? withData.reduce((a, b) => a.avg! <= b.avg! ? a : b) : null;
+
+    return {
+      chartData: data, monthAvg: m, prevMonthAvg: p, delta: m - p, bestDay: best, worstDay: worst,
+      percentile: pct, weekdayStats: wdStats, bestWeekday: bestWd, worstWeekday: worstWd,
+    };
   }, [rows, range]);
 
   function commitThreshold() {
@@ -166,6 +196,15 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday,
             </div>
           )}
         </div>
+        {percentile !== null && (
+          <div className="mt-1 text-xs sd-text-4">
+            Better than{" "}
+            <span className={`font-medium ${percentile >= 75 ? "text-emerald-400" : percentile >= 50 ? "text-amber-400" : "sd-text-3"}`}>
+              {percentile}%
+            </span>{" "}
+            of your days this period
+          </div>
+        )}
       </div>
 
       {(bestDay || worstDay) && (
@@ -232,7 +271,7 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday,
               </div>
               {detailLoading && <div className="text-sm sd-text-3">Loading…</div>}
               {detailErr && <div className="text-sm text-red-400">{detailErr}</div>}
-              {dayDetail && <DayDetailPanel day={dayDetail} />}
+              {dayDetail && <DayDetailPanel day={dayDetail} theme={theme} />}
             </div>
           )}
 
@@ -295,6 +334,15 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday,
         </section>
       )}
 
+      {weekdayStats.some((d) => d.avg !== null) && (
+        <WeekdayPattern
+          stats={weekdayStats}
+          bestWeekday={bestWeekday}
+          worstWeekday={worstWeekday}
+          range={range}
+        />
+      )}
+
       <section className="border-t sd-divider pt-6">
         <div className="text-xs uppercase tracking-wider sd-text-3 mb-3">Streak settings</div>
         <div className="flex items-center gap-3">
@@ -317,7 +365,14 @@ export default function HistoryPage({ threshold, onThresholdChange, onGoToToday,
   );
 }
 
-function DayDetailPanel({ day }: { day: Day }) {
+function DayDetailPanel({ day, theme }: { day: Day; theme: Theme }) {
+  if (day.status === "rest") {
+    return (
+      <div className="text-sm sd-text-3 flex items-center gap-2">
+        <span className="text-base">🌙</span> Rest day — streak preserved.
+      </div>
+    );
+  }
   const pct = day.total > 0 ? Math.round((day.score / day.total) * 100) : 0;
 
   const catMap: Record<string, { done: number; total: number }> = {};
@@ -342,7 +397,7 @@ function DayDetailPanel({ day }: { day: Day }) {
       {day.tasks.length > 0 && (
         <div className="space-y-1">
           {day.tasks.map((t) => (
-            <TaskRow key={t.id} task={t} />
+            <TaskRow key={t.id} task={t} theme={theme} />
           ))}
         </div>
       )}
@@ -361,7 +416,7 @@ function DayDetailPanel({ day }: { day: Day }) {
             const p = v.total > 0 ? Math.round((v.done / v.total) * 100) : 0;
             return (
               <div key={cat} className="flex items-center gap-2 text-xs">
-                <CategoryBadge cat={cat} />
+                <CategoryBadge cat={cat} theme={theme} />
                 <div className="flex-1 h-1 bg-[var(--surface-2)] rounded-full overflow-hidden">
                   <div className="h-full bg-[var(--accent)] rounded-full" style={{ width: `${p}%` }} />
                 </div>
@@ -375,7 +430,7 @@ function DayDetailPanel({ day }: { day: Day }) {
   );
 }
 
-function TaskRow({ task }: { task: Task }) {
+function TaskRow({ task, theme }: { task: Task; theme: Theme }) {
   return (
     <div className={`flex items-center gap-2 py-1 px-2 rounded text-sm ${task.completed ? "opacity-100" : "opacity-50"}`}>
       <span className={task.completed ? "text-emerald-400" : "text-red-500"}>
@@ -384,9 +439,90 @@ function TaskRow({ task }: { task: Task }) {
       <span className={`flex-1 ${task.completed ? "sd-text-1" : "sd-text-3 line-through"}`}>
         {task.title}
       </span>
-      {task.category && <CategoryBadge cat={task.category} />}
+      {task.category && <CategoryBadge cat={task.category} theme={theme} />}
       <span className="text-xs sd-text-4 tabular-nums">{task.weight}pt</span>
     </div>
+  );
+}
+
+type WeekdayStat = { name: string; fullName: string; avg: number | null; count: number };
+
+function WeekdayPattern({
+  stats,
+  bestWeekday,
+  worstWeekday,
+  range,
+}: {
+  stats: WeekdayStat[];
+  bestWeekday: WeekdayStat | null;
+  worstWeekday: WeekdayStat | null;
+  range: number;
+}) {
+  const maxAvg = Math.max(...stats.map((d) => d.avg ?? 0), 1);
+
+  return (
+    <section className="border-t sd-divider pt-6">
+      <div className="text-xs uppercase tracking-wider sd-text-3 mb-4">
+        Weekday pattern · last {range} days
+      </div>
+
+      <div className="flex items-end justify-between gap-1 h-20 mb-1">
+        {stats.map((d) => (
+          <div key={d.fullName} className="flex flex-col items-center gap-1 flex-1">
+            {d.avg !== null && (
+              <span className="text-[9px] sd-text-4 tabular-nums">{d.avg}%</span>
+            )}
+            <div className="w-full flex items-end justify-center" style={{ height: 44 }}>
+              {d.avg !== null ? (
+                <div
+                  className={`w-full rounded-t transition-all ${
+                    d === bestWeekday
+                      ? "bg-[var(--accent)] opacity-90"
+                      : d === worstWeekday
+                      ? "bg-red-500/50"
+                      : "bg-[var(--accent)]/40"
+                  }`}
+                  style={{ height: `${Math.round((d.avg / maxAvg) * 44)}px` }}
+                />
+              ) : (
+                <div className="w-full rounded-t bg-[var(--surface-2)]" style={{ height: 6 }} />
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex justify-between gap-1 mb-3">
+        {stats.map((d) => (
+          <div key={d.fullName} className="flex-1 text-center">
+            <span
+              className={`text-[10px] ${
+                d === bestWeekday ? "text-[var(--accent)] font-medium" :
+                d === worstWeekday ? "text-red-400" : "sd-text-4"
+              }`}
+            >
+              {d.name}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {(bestWeekday || worstWeekday) && (
+        <div className="text-xs sd-text-3 leading-relaxed">
+          {bestWeekday && (
+            <span>
+              Best: <span className="text-[var(--accent)]">{bestWeekday.fullName}s</span> ({bestWeekday.avg}%)
+            </span>
+          )}
+          {bestWeekday && worstWeekday && <span className="sd-text-4"> · </span>}
+          {worstWeekday && (
+            <span>
+              Toughest: <span className="text-red-400">{worstWeekday.fullName}s</span> ({worstWeekday.avg}%)
+            </span>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -417,7 +553,9 @@ function Heatmap({
         {rows.map((r) => {
           const pct = r.locked && r.total > 0 ? r.score / r.total : 0;
           const isSelected = r.date === selectedDate;
-          const bg = !r.locked
+          const bg = r.rest
+            ? "bg-indigo-900/40 border-indigo-800/60"
+            : !r.locked
             ? "bg-[var(--surface-1)] border-[var(--border-1)]"
             : pct >= thresholdFrac
             ? heatmapHigh
@@ -426,13 +564,18 @@ function Heatmap({
             : pct >= 0.4
             ? "bg-amber-700/70 border-amber-700"
             : "bg-red-900/60 border-red-900";
+          const titleLabel = r.rest
+            ? "rest day"
+            : r.locked
+            ? `${r.score}/${r.total} pts (${r.total > 0 ? Math.round((r.score / r.total) * 100) : 0}%)`
+            : "not locked";
           return (
             <button
               key={r.date}
-              title={`${r.date} — ${r.locked ? `${r.score}/${r.total} pts (${r.total > 0 ? Math.round((r.score / r.total) * 100) : 0}%)` : "not locked"}`}
-              onClick={() => onSelect(r.date)}
+              title={`${r.date} — ${titleLabel}`}
+              onClick={() => r.locked || r.rest ? onSelect(r.date) : undefined}
               className={`w-6 h-6 rounded border ${bg} transition-all ${
-                isSelected ? "ring-2 ring-white/60 scale-110" : "hover:scale-110"
+                isSelected ? "ring-2 ring-white/60 scale-110" : (r.locked || r.rest) ? "hover:scale-110" : "cursor-default"
               }`}
             />
           );

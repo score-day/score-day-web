@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, OfflineError } from "../lib/api";
 import { getTemplates, saveTemplate, deleteTemplate, loadTemplates } from "../lib/templates";
 import { isOnline } from "../lib/network";
+import { shareScoreCard } from "../lib/shareCard";
 import type { Day, FriendActivity, FriendTask, Task, Template } from "../lib/types";
 import type { Theme } from "../lib/theme";
 
@@ -12,33 +13,117 @@ const SOCIAL_COPY: Record<Theme, { feed: string; inbox: string; wants: string }>
 };
 
 const STATUS_VOCAB: Record<Theme, Record<string, string>> = {
-  "light":         { Planning: "Planning", "In progress": "In progress", Done: "Done", "Not started": "Not started" },
-  "dark-knight":   { Planning: "Briefing", "In progress": "Engaged", Done: "Mission done", "Not started": "Off-grid" },
-  "solo-leveling": { Planning: "Preparing", "In progress": "Hunting", Done: "Quest clear", "Not started": "Resting" },
+  "light":         { Planning: "Planning", "In progress": "In progress", Done: "Done", "Not started": "Not started", "Rest day": "Rest day" },
+  "dark-knight":   { Planning: "Briefing", "In progress": "Engaged", Done: "Mission done", "Not started": "Off-grid", "Rest day": "Stand down" },
+  "solo-leveling": { Planning: "Preparing", "In progress": "Hunting", Done: "Quest clear", "Not started": "Resting", "Rest day": "Meditating" },
 };
 
 const CATEGORIES = ["Work", "Personal", "Health", "Learning", "Other"] as const;
 
-const CAT_BADGE: Record<string, string> = {
-  Work:     "bg-blue-500/20 text-blue-300",
-  Personal: "bg-violet-500/20 text-violet-300",
-  Health:   "bg-emerald-500/20 text-emerald-300",
-  Learning: "bg-amber-500/20 text-amber-300",
-  Other:    "bg-[var(--surface-2)] text-[var(--text-3)]",
+// ── Smart input parser ──
+
+const WEIGHT_KEYWORDS: Record<string, number> = {
+  heavy: 80, hard: 80, big: 80, major: 80,
+  medium: 50, normal: 50, regular: 50, moderate: 50,
+  light: 20, quick: 20, small: 20, easy: 20, minor: 20, fast: 20,
 };
 
-function CategoryBadge({ category }: { category: string | null }) {
+const CAT_SIGNALS: { cat: string; words: string[] }[] = [
+  { cat: "Health",   words: ["workout", "gym", "run", "walk", "yoga", "meditate", "exercise", "swim", "cycle", "stretch"] },
+  { cat: "Learning", words: ["read", "study", "learn", "course", "book", "watch", "tutorial", "practice", "revise"] },
+  { cat: "Work",     words: ["meeting", "email", "report", "call", "review", "deploy", "code", "write", "work", "client"] },
+  { cat: "Personal", words: ["journal", "plan", "organise", "organize", "clean", "family", "cook", "shop"] },
+];
+
+function parseSmartInput(text: string): { title: string; weight: number | null; category: string | null } {
+  let raw = text.trim();
+  if (!raw) return { title: "", weight: null, category: null };
+
+  let weight: number | null = null;
+
+  // [X] format
+  const bracketMatch = raw.match(/\[(\d+)\]\s*$/);
+  if (bracketMatch) {
+    weight = parseInt(bracketMatch[1]);
+    raw = raw.slice(0, raw.length - bracketMatch[0].length).trim();
+  }
+
+  // #X format
+  if (weight === null) {
+    const hashMatch = raw.match(/#(\d+)\s*$/);
+    if (hashMatch) {
+      weight = parseInt(hashMatch[1]);
+      raw = raw.slice(0, raw.length - hashMatch[0].length).trim();
+    }
+  }
+
+  // Xpts / Xpt / X pts / X points
+  if (weight === null) {
+    const ptsMatch = raw.match(/(\d+)\s*(?:pts?|points?)\s*$/i);
+    if (ptsMatch) {
+      weight = parseInt(ptsMatch[1]);
+      raw = raw.slice(0, raw.length - ptsMatch[0].length).trim();
+    }
+  }
+
+  // Trailing standalone number ("workout 40" but not "workout40")
+  if (weight === null) {
+    const numMatch = raw.match(/(?<=\s)(\d+)$/);
+    if (numMatch) {
+      const n = parseInt(numMatch[1]);
+      if (n >= 1 && n <= 9999) {
+        weight = n;
+        raw = raw.slice(0, raw.length - numMatch[0].length).trim();
+      }
+    }
+  }
+
+  // Keyword weight ("workout heavy")
+  if (weight === null) {
+    const words = raw.split(/\s+/);
+    const last = words[words.length - 1]?.toLowerCase();
+    if (last && WEIGHT_KEYWORDS[last] !== undefined) {
+      weight = WEIGHT_KEYWORDS[last];
+      raw = words.slice(0, -1).join(" ").trim();
+    }
+  }
+
+  // Auto-detect category from title
+  const lower = raw.toLowerCase();
+  let category: string | null = null;
+  for (const { cat, words } of CAT_SIGNALS) {
+    if (words.some((w) => lower.includes(w))) {
+      category = cat;
+      break;
+    }
+  }
+
+  return { title: raw, weight, category };
+}
+
+const CAT_BADGE: Record<string, { light: string; dark: string }> = {
+  Work:     { light: "bg-blue-500/15 text-blue-700",    dark: "bg-blue-500/20 text-blue-300" },
+  Personal: { light: "bg-violet-500/15 text-violet-700", dark: "bg-violet-500/20 text-violet-300" },
+  Health:   { light: "bg-emerald-500/15 text-emerald-700", dark: "bg-emerald-500/20 text-emerald-300" },
+  Learning: { light: "bg-amber-500/15 text-amber-700",   dark: "bg-amber-500/20 text-amber-300" },
+  Other:    { light: "bg-[var(--surface-2)] text-[var(--text-3)]", dark: "bg-[var(--surface-2)] text-[var(--text-3)]" },
+};
+
+function CategoryBadge({ category, theme }: { category: string | null; theme: Theme }) {
   if (!category) return null;
+  const variants = CAT_BADGE[category] ?? CAT_BADGE.Other;
+  const cls = theme === "light" ? variants.light : variants.dark;
   return (
-    <span className={`text-xs px-1.5 py-0.5 rounded mr-2 shrink-0 ${CAT_BADGE[category] ?? "bg-[var(--surface-2)] text-[var(--text-3)]"}`}>
+    <span className={`text-xs px-1.5 py-0.5 rounded mr-2 shrink-0 ${cls}`}>
       {category}
     </span>
   );
 }
 
-export default function DayPage({ day, onChange, theme }: { day: Day; onChange: () => void; theme: Theme }) {
+export default function DayPage({ day, onChange, theme, streak }: { day: Day; onChange: () => void; theme: Theme; streak: number }) {
   if (day.status === "planning") return <PlanView day={day} onChange={onChange} theme={theme} />;
-  return <ActiveView day={day} onChange={onChange} theme={theme} />;
+  if (day.status === "rest") return <RestView day={day} />;
+  return <ActiveView day={day} onChange={onChange} theme={theme} streak={streak} />;
 }
 
 // ---------- planning ----------
@@ -49,6 +134,9 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
   const [category, setCategory] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [smartMode, setSmartMode] = useState(false);
+  const [smartInput, setSmartInput] = useState("");
+  const [showRestModal, setShowRestModal] = useState(false);
 
   const [templates, setTemplates] = useState<Template[]>(() => getTemplates());
   const [saving, setSaving] = useState(false);
@@ -71,8 +159,31 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
   const used = day.tasks.reduce((s, t) => s + t.weight, 0);
   const canStart = day.tasks.length > 0;
 
+  const smartParsed = useMemo(() => parseSmartInput(smartInput), [smartInput]);
+  const smartValid = smartParsed.title.length > 0 && smartParsed.weight !== null;
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
+    if (smartMode) {
+      const parsed = parseSmartInput(smartInput);
+      if (!parsed.title || parsed.weight === null) return;
+      setBusy(true);
+      setErr(null);
+      try {
+        await api.addTask(day.id, parsed.title, parsed.weight, parsed.category);
+        setSmartInput("");
+        onChange();
+      } catch (e) {
+        if (e instanceof OfflineError) {
+          setSmartInput("");
+        } else {
+          setErr((e as Error).message);
+        }
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     if (!title.trim() || weight === "") return;
     setBusy(true);
     setErr(null);
@@ -112,6 +223,19 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
     setErr(null);
     try {
       await api.startDay(day.id);
+      onChange();
+    } catch (e) {
+      if (!(e instanceof OfflineError)) setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRest() {
+    setBusy(true);
+    setErr(null);
+    try {
+      await api.restDay(day.id);
       onChange();
     } catch (e) {
       if (!(e instanceof OfflineError)) setErr((e as Error).message);
@@ -163,9 +287,12 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
     setBusy(true);
     setErr(null);
     try {
-      await Promise.all(tpl.tasks.map((t) => api.addTask(day.id, t.title, t.weight, t.category)));
+      for (const t of tpl.tasks) {
+        await api.addTask(day.id, t.title, t.weight, t.category);
+      }
       onChange();
     } catch (e) {
+      onChange(); // refresh to show any tasks that were added before the failure
       if (!(e instanceof OfflineError)) setErr((e as Error).message);
     } finally {
       setBusy(false);
@@ -332,7 +459,7 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
                   onClick={() => !busy && handleEditStart(t)}
                   className="flex items-center px-3 py-3 cursor-pointer active:bg-[var(--surface-2)] transition-colors"
                 >
-                  <CategoryBadge category={t.category} />
+                  <CategoryBadge category={t.category} theme={theme} />
                   <span className="flex-1 text-sm">{t.title}</span>
                   <span className="text-sm tabular-nums sd-text-3 mr-3">{t.weight}</span>
                   {/* pencil — always visible, tap affordance */}
@@ -431,50 +558,111 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
       </section>
 
       {/* ── Add task form ── */}
-      <form onSubmit={handleAdd} className="space-y-2">
-        <div className="flex gap-2">
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Task name"
-            className="flex-1 sd-input rounded-md px-3 py-2 text-sm"
-            disabled={busy}
-          />
-          <input
-            type="number"
-            min={1}
-            value={weight}
-            onChange={(e) => setWeight(e.target.value === "" ? "" : Number(e.target.value))}
-            placeholder="pts"
-            className="w-20 sd-input rounded-md px-3 py-2 text-sm tabular-nums"
-            disabled={busy}
-          />
-        </div>
-        <div className="flex gap-2">
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="sd-input rounded-md px-3 py-2 text-sm"
-            disabled={busy}
-          >
-            <option value="">No category</option>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xs uppercase tracking-wider sd-text-3">Add task</h2>
           <button
-            type="submit"
-            className="px-4 py-2 rounded-md sd-btn-accent text-sm font-medium transition"
-            disabled={busy || !title.trim() || weight === "" || day.tasks.length >= 12}
+            type="button"
+            onClick={() => { setSmartMode((v) => !v); setSmartInput(""); setErr(null); }}
+            className={`text-xs px-2 py-1 rounded-md transition ${
+              smartMode
+                ? "bg-[var(--accent)]/15 text-[var(--accent)] font-medium"
+                : "sd-text-4 hover:text-[var(--text-2)] hover:bg-[var(--surface-2)]"
+            }`}
           >
-            Add
+            ✦ Smart
           </button>
         </div>
-      </form>
+
+        <form onSubmit={handleAdd} className="space-y-2">
+          {smartMode ? (
+            <>
+              <input
+                value={smartInput}
+                onChange={(e) => setSmartInput(e.target.value)}
+                placeholder="e.g.  Deep work 80  ·  Workout [45]  ·  Read heavy"
+                className="w-full sd-input rounded-md px-3 py-2 text-sm"
+                disabled={busy}
+                autoFocus
+              />
+              {smartInput.trim() !== "" && (
+                <div className={`text-xs px-3 py-2 rounded-md border transition-colors ${
+                  smartValid
+                    ? "border-[var(--accent)]/30 bg-[var(--accent)]/5"
+                    : "sd-border bg-[var(--surface-1)]"
+                }`}>
+                  {smartValid ? (
+                    <span className="sd-text-2">
+                      <span className="sd-text-1 font-medium">{smartParsed.title}</span>
+                      {" · "}
+                      <span className="tabular-nums">{smartParsed.weight} pts</span>
+                      {smartParsed.category && (
+                        <span className="sd-text-4"> · {smartParsed.category}</span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="sd-text-4">Add a number for weight — e.g. "Workout 45"</span>
+                  )}
+                </div>
+              )}
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-md sd-btn-accent text-sm font-medium transition"
+                  disabled={busy || !smartValid || day.tasks.length >= 12}
+                >
+                  Add
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex gap-2">
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Task name"
+                  className="flex-1 sd-input rounded-md px-3 py-2 text-sm"
+                  disabled={busy}
+                />
+                <input
+                  type="number"
+                  min={1}
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder="pts"
+                  className="w-20 sd-input rounded-md px-3 py-2 text-sm tabular-nums"
+                  disabled={busy}
+                />
+              </div>
+              <div className="flex gap-2">
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="sd-input rounded-md px-3 py-2 text-sm"
+                  disabled={busy}
+                >
+                  <option value="">No category</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-md sd-btn-accent text-sm font-medium transition"
+                  disabled={busy || !title.trim() || weight === "" || day.tasks.length >= 12}
+                >
+                  Add
+                </button>
+              </div>
+            </>
+          )}
+        </form>
+      </div>
 
       {err && <div className="text-sm text-red-400">{err}</div>}
 
-      <div className="pt-4 border-t sd-divider">
+      <div className="pt-4 border-t sd-divider space-y-2">
         <button
           onClick={handleStart}
           disabled={!canStart || busy}
@@ -487,19 +675,53 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
         >
           {canStart ? "Start day" : "Add at least one task to start"}
         </button>
+        <button
+          onClick={() => setShowRestModal(true)}
+          disabled={busy}
+          className="w-full py-2 rounded-md text-xs sd-text-4 hover:text-[var(--text-3)] transition"
+        >
+          Taking a rest day?
+        </button>
       </div>
 
       <FriendsFeed theme={theme} />
+
+      {showRestModal && (
+        <RestDayModal
+          onConfirm={() => { setShowRestModal(false); handleRest(); }}
+          onCancel={() => setShowRestModal(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------- rest day ----------
+
+function RestView({ day }: { day: Day }) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="text-sm sd-text-3">Rest day · {day.date}</div>
+        <div className="mt-4 flex flex-col items-center py-10 text-center">
+          <div className="text-5xl mb-4">🌙</div>
+          <div className="text-xl font-semibold sd-text-1 mb-2">Rest day</div>
+          <p className="text-sm sd-text-3 max-w-xs">
+            You took the day off. Your streak is safe — rest days don't break the chain.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
 
 // ---------- active / locked ----------
 
-function ActiveView({ day, onChange, theme }: { day: Day; onChange: () => void; theme: Theme }) {
+function ActiveView({ day, onChange, theme, streak }: { day: Day; onChange: () => void; theme: Theme; streak: number }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [showLockModal, setShowLockModal] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const isLocked = day.status === "locked";
 
   async function toggle(t: Task) {
@@ -539,6 +761,24 @@ function ActiveView({ day, onChange, theme }: { day: Day; onChange: () => void; 
   const score = day.tasks.filter((t) => t.completed).reduce((s, t) => s + t.weight, 0);
   const pct = day.total > 0 ? Math.round((score / day.total) * 100) : 0;
 
+  async function handleShare() {
+    setSharing(true);
+    try {
+      await shareScoreCard({
+        date: day.date,
+        score,
+        total: day.total,
+        pct,
+        streak,
+        tasks: day.tasks.map((t) => ({ title: t.title, completed: t.completed, weight: t.weight })),
+      });
+    } catch {
+      // User cancelled share or share not supported — silently ignore
+    } finally {
+      setSharing(false);
+    }
+  }
+
   const scoreColorClass =
     pct >= 80 ? "sd-score-high" :
     pct >= 50 ? "sd-score-mid" :
@@ -559,6 +799,19 @@ function ActiveView({ day, onChange, theme }: { day: Day; onChange: () => void; 
             <span className="text-xs sd-text-3 px-2 py-1 rounded bg-[var(--surface-1)] border sd-border">
               locked
             </span>
+          )}
+          {isLocked && (
+            <button
+              onClick={handleShare}
+              disabled={sharing}
+              className="ml-auto text-xs sd-text-3 hover:text-[var(--text-1)] px-2 py-1 rounded border sd-border bg-[var(--surface-1)] transition flex items-center gap-1.5 disabled:opacity-40"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+              {sharing ? "…" : "Share"}
+            </button>
           )}
         </div>
       </div>
@@ -587,7 +840,7 @@ function ActiveView({ day, onChange, theme }: { day: Day; onChange: () => void; 
                 </svg>
               )}
             </span>
-            <CategoryBadge category={t.category} />
+            <CategoryBadge category={t.category} theme={theme} />
             <span className={"flex-1 text-sm " + (t.completed ? "line-through" : "")}>
               {t.title}
             </span>
@@ -630,11 +883,15 @@ function ActiveView({ day, onChange, theme }: { day: Day; onChange: () => void; 
 
 function FriendsFeed({ theme }: { theme: Theme }) {
   const [activity, setActivity] = useState<FriendActivity[]>([]);
+  const [loading, setLoading] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function fetchActivity() {
-    if (!isOnline()) return;
-    api.friendsActivity().then(setActivity).catch(() => {});
+    if (!isOnline()) { setLoading(false); return; }
+    api.friendsActivity()
+      .then(setActivity)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
@@ -643,6 +900,16 @@ function FriendsFeed({ theme }: { theme: Theme }) {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (loading) return (
+    <section>
+      <h2 className="text-xs uppercase tracking-wider sd-text-3 mb-2">{SOCIAL_COPY[theme].feed}</h2>
+      <div className="space-y-2">
+        <div className="h-14 rounded-lg border sd-border bg-[var(--surface-1)] animate-pulse" />
+        <div className="h-14 rounded-lg border sd-border bg-[var(--surface-1)] animate-pulse opacity-50" />
+      </div>
+    </section>
+  );
 
   if (activity.length === 0) return null;
 
@@ -666,6 +933,7 @@ function FriendActivityCard({ a, theme }: { a: FriendActivity; theme: Theme }) {
     a.day_status === "planning" ? "Planning" :
     a.day_status === "active"   ? "In progress" :
     a.day_status === "locked"   ? "Done" :
+    a.day_status === "rest"     ? "Rest day" :
     "Not started";
 
   const statusText = STATUS_VOCAB[theme][statusLabel] ?? statusLabel;
@@ -739,6 +1007,36 @@ function FriendActivityCard({ a, theme }: { a: FriendActivity; theme: Theme }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function RestDayModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
+      <div className="sd-surface border rounded-xl w-full max-w-sm p-6 space-y-4 text-center">
+        <div className="text-4xl">🌙</div>
+        <div>
+          <div className="text-base font-semibold sd-text-1">Mark today as rest?</div>
+          <p className="text-sm sd-text-3 mt-1.5 leading-relaxed">
+            Your streak won't break — rest days are transparent to the chain. You won't be able to add tasks afterwards.
+          </p>
+        </div>
+        <div className="flex gap-2 justify-center">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-sm sd-text-3 hover:text-[var(--text-1)] transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 text-sm rounded-md sd-btn-accent"
+          >
+            Rest day
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

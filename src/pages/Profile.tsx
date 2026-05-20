@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, OfflineError } from "../lib/api";
 import type { Theme } from "../lib/theme";
-import type { Challenge, Friend, Stats } from "../lib/types";
+import type { Achievement, Challenge, Friend, Stats } from "../lib/types";
 
 const THEMES: { id: Theme; label: string; icon: string; desc: string }[] = [
   { id: "light",         label: "Clarity",         icon: "☀️",  desc: "Clean & focused" },
@@ -26,6 +26,7 @@ export default function ProfilePage({ theme, onThemeChange, onLogout }: Props) {
   const [saving, setSaving] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [statsErr, setStatsErr] = useState<string | null>(null);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
 
   // Friends state
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -58,6 +59,7 @@ export default function ProfilePage({ theme, onThemeChange, onLogout }: Props) {
       setPlayerId(u.player_id);
     }).catch(() => {});
     api.stats().then(setStats).catch((e) => setStatsErr((e as Error).message));
+    api.achievements().then(setAchievements).catch(() => {});
     api.friends().then(setFriends).catch((e) => setFriendErr((e as Error).message));
     api.challenges().then(setChallenges).catch(() => {});
   }, []);
@@ -562,12 +564,17 @@ export default function ProfilePage({ theme, onThemeChange, onLogout }: Props) {
         )}
       </section>
 
+      {/* ── Achievements ── */}
+      {achievements.length > 0 && (
+        <AchievementsSection achievements={achievements} />
+      )}
+
       {/* ── About ── */}
       <section className="border-t sd-divider pt-6">
         <div className="text-xs uppercase tracking-wider sd-text-3 mb-3">About</div>
         <div className="space-y-1 text-sm sd-text-3">
           <p>Score Day — rate your productivity, one day at a time.</p>
-          <p className="sd-text-4 text-xs mt-2">v2.8.0</p>
+          <p className="sd-text-4 text-xs mt-2">v2.9.4</p>
         </div>
       </section>
 
@@ -670,6 +677,40 @@ function FriendAvatar({ name }: { name: string }) {
     <div className="w-8 h-8 rounded-full bg-[var(--surface-3)] border sd-border flex items-center justify-center text-xs font-bold sd-text-2 shrink-0 select-none">
       {name.charAt(0).toUpperCase()}
     </div>
+  );
+}
+
+function AchievementsSection({ achievements }: { achievements: Achievement[] }) {
+  const unlocked = achievements.filter((a) => a.unlocked).length;
+  return (
+    <section>
+      <div className="flex items-baseline gap-2 mb-3">
+        <div className="text-xs uppercase tracking-wider sd-text-3">Achievements</div>
+        <div className="text-xs sd-text-4">{unlocked}/{achievements.length}</div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {achievements.map((a) => (
+          <div
+            key={a.id}
+            className={`rounded-lg border px-3 py-2.5 transition-colors ${
+              a.unlocked
+                ? "border-[var(--accent)]/25 bg-[var(--accent)]/5"
+                : "sd-border bg-[var(--surface-1)]"
+            }`}
+          >
+            <div className={`flex items-center gap-2 mb-1 ${a.unlocked ? "" : "opacity-35"}`}>
+              <span className="text-xl leading-none">{a.icon}</span>
+              <span className={`text-xs font-semibold leading-tight ${a.unlocked ? "sd-text-1" : "sd-text-3"}`}>
+                {a.name}
+              </span>
+            </div>
+            <div className={`text-[10px] leading-tight ${a.unlocked ? "sd-text-4" : "sd-text-4 opacity-40"}`}>
+              {a.description}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

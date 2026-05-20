@@ -31,3 +31,12 @@ export async function cacheDelete(key: string): Promise<void> {
     await Preferences.remove({ key: PREFIX + key });
   } catch {}
 }
+
+export async function clearAllCache(): Promise<void> {
+  try {
+    const { keys } = await Preferences.keys();
+    await Promise.all(
+      keys.filter((k) => k.startsWith(PREFIX)).map((k) => Preferences.remove({ key: k }))
+    );
+  } catch {}
+}

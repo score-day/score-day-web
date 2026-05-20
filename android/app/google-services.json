@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "351838017958",
+    "project_id": "score-day",
+    "storage_bucket": "score-day.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:351838017958:android:23496eaa9facfa39e35767",
+        "android_client_info": {
+          "package_name": "com.scoreday.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCe-OrlqrXszVQj9xDYwtDsCto2B7_pdq4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

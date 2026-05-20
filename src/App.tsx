@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { Preferences } from "@capacitor/preferences";
 import { api, auth, setOnUnauthorized } from "./lib/api";
 import { loadToken } from "./lib/token";
 import { getThreshold, setThreshold as saveThreshold, loadSettings } from "./lib/settings";
@@ -10,6 +12,7 @@ import type { SyncStatus } from "./hooks/useSyncStatus";
 import type { Day, Streak } from "./lib/types";
 import { loadTheme, saveTheme, DEFAULT_THEME } from "./lib/theme";
 import type { Theme } from "./lib/theme";
+import { usePushNotifications } from "./hooks/usePushNotifications";
 import DayPage from "./pages/Day";
 import HistoryPage from "./pages/History";
 import ProfilePage from "./pages/Profile";
@@ -47,6 +50,8 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>(DEFAULT_THEME);
   const { online } = useNetwork();
   const { status: syncStatus, pending: syncPending } = useSyncStatus();
+  const handlePushNavigate = useCallback((tab: string) => setTab(tab as Tab), []);
+  usePushNotifications(handlePushNavigate);
 
   const refreshRef = useRef<() => void>(() => {});
 
@@ -75,6 +80,24 @@ export default function App() {
     }
     if (streakResult.status === "fulfilled") {
       setStreak(streakResult.value);
+    }
+    // Write widget data to SharedPreferences so the home screen widget can read it.
+    if (Capacitor.isNativePlatform() && dayResult.status === "fulfilled") {
+      const d = dayResult.value;
+      const streakCount = streakResult.status === "fulfilled" ? streakResult.value.streak : 0;
+      const pct = d.total > 0 ? Math.round((d.score / d.total) * 100) : 0;
+      const activeTasks = d.status === "active" || d.status === "locked";
+      const tasksJson = activeTasks
+        ? JSON.stringify(d.tasks.map((t) => ({ done: t.completed, title: t.title, weight: t.weight })))
+        : "[]";
+      const writes = [
+        Preferences.set({ key: "sd_status", value: d.status }),
+        Preferences.set({ key: "sd_streak", value: String(streakCount) }),
+        Preferences.set({ key: "sd_score",  value: activeTasks ? String(pct) : "-1" }),
+        Preferences.set({ key: "sd_pts",    value: activeTasks ? `${d.score}/${d.total}` : "" }),
+        Preferences.set({ key: "sd_tasks",  value: tasksJson }),
+      ];
+      Promise.all(writes).catch(() => {});
     }
   }
 
@@ -172,7 +195,7 @@ export default function App() {
           </div>
         )}
 
-        {tab === "day" && day && <DayPage day={day} onChange={refresh} theme={theme} />}
+        {tab === "day" && day && <DayPage day={day} onChange={refresh} theme={theme} streak={streak?.streak ?? 0} />}
         {tab === "day" && !day && <div className="sd-text-3">Loading…</div>}
         {tab === "history" && (
           <HistoryPage

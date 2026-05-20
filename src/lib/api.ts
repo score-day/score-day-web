@@ -1,8 +1,8 @@
 import { Capacitor, CapacitorHttp } from "@capacitor/core";
-import type { CategoryStat, Challenge, Day, Friend, FriendActivity, FriendTask, HistoryEntry, MutationData, Stats, Streak, Task, UserProfile } from "./types";
+import type { Achievement, CategoryStat, Challenge, Day, Friend, FriendActivity, FriendTask, HistoryEntry, MutationData, Stats, Streak, Task, UserProfile } from "./types";
 import { loadToken, saveToken, clearToken } from "./token";
 import { isOnline } from "./network";
-import { cacheRead, cacheWrite } from "./cache";
+import { cacheRead, cacheWrite, clearAllCache } from "./cache";
 import { enqueue, makeTempId, OfflineError, clearQueue } from "./queue";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "";
@@ -165,6 +165,7 @@ export const auth = {
   logout: async () => {
     await clearQueue();
     await clearToken();
+    await clearAllCache();
   },
 };
 
@@ -177,6 +178,7 @@ export const api = {
   dayByDate: (date: string) => cachedReq<Day>(`/api/days/by-date/${date}`),
   stats: (threshold = 80) => cachedReq<Stats>(`/api/stats?threshold=${threshold}`),
   me: () => cachedReq<UserProfile>("/api/me"),
+  achievements: () => cachedReq<Achievement[]>("/api/achievements"),
 
   // ── Mutations — queued when offline, replayed on reconnect ──
   addTask: (dayId: number, title: string, weight: number, category: string | null) =>
@@ -203,6 +205,11 @@ export const api = {
     queuedMutation(
       { type: "lockDay", dayId },
       () => req<Day>(`/api/days/${dayId}/lock`, { method: "POST" }),
+    ),
+  restDay: (dayId: number) =>
+    queuedMutation(
+      { type: "restDay", dayId },
+      () => req<Day>(`/api/days/${dayId}/rest`, { method: "POST" }),
     ),
   saveNote: (dayId: number, note: string) =>
     queuedMutation(
@@ -237,6 +244,10 @@ export const api = {
   declineFriendTask: (id: number) =>
     req<{ ok: boolean }>(`/api/friend-tasks/${id}`, { method: "DELETE" }),
 
+  // ── Device token ──
+  setDeviceToken: (token: string) =>
+    req<void>("/api/me/device-token", { method: "PUT", body: JSON.stringify({ token }) }),
+
   // ── Challenges ──
   challenges: () => req<Challenge[]>("/api/challenges"),
   sendChallenge: (receiver_player_id: string, threshold: number, days: number) =>
@@ -260,6 +271,8 @@ export const rawApi = {
     req<Day>(`/api/days/${dayId}/start`, { method: "POST" }),
   lockDay: (dayId: number) =>
     req<Day>(`/api/days/${dayId}/lock`, { method: "POST" }),
+  restDay: (dayId: number) =>
+    req<Day>(`/api/days/${dayId}/rest`, { method: "POST" }),
   saveNote: (dayId: number, note: string) =>
     req<Day>(`/api/days/${dayId}/note`, { method: "PATCH", body: JSON.stringify({ note }) }),
   updateMe: (patch: { username: string | null }) =>
