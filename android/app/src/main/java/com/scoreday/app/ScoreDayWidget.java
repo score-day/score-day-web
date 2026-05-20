@@ -23,10 +23,10 @@ public class ScoreDayWidget extends AppWidgetProvider {
     private static final String KEY_PTS    = "sd_pts";
     private static final String KEY_TASKS  = "sd_tasks";
 
-    private static final int[] ROW_IDS    = {R.id.task_row_0,    R.id.task_row_1,    R.id.task_row_2,    R.id.task_row_3,    R.id.task_row_4};
-    private static final int[] CHECK_IDS  = {R.id.task_check_0,  R.id.task_check_1,  R.id.task_check_2,  R.id.task_check_3,  R.id.task_check_4};
-    private static final int[] TITLE_IDS  = {R.id.task_title_0,  R.id.task_title_1,  R.id.task_title_2,  R.id.task_title_3,  R.id.task_title_4};
-    private static final int[] WEIGHT_IDS = {R.id.task_weight_0, R.id.task_weight_1, R.id.task_weight_2, R.id.task_weight_3, R.id.task_weight_4};
+    private static final int[] ROW_IDS    = {R.id.task_row_0,    R.id.task_row_1,    R.id.task_row_2,    R.id.task_row_3};
+    private static final int[] CHECK_IDS  = {R.id.task_check_0,  R.id.task_check_1,  R.id.task_check_2,  R.id.task_check_3};
+    private static final int[] TITLE_IDS  = {R.id.task_title_0,  R.id.task_title_1,  R.id.task_title_2,  R.id.task_title_3};
+    private static final int[] WEIGHT_IDS = {R.id.task_weight_0, R.id.task_weight_1, R.id.task_weight_2, R.id.task_weight_3};
 
     @Override
     public void onUpdate(Context context, AppWidgetManager mgr, int[] ids) {

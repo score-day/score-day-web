@@ -88,7 +88,12 @@ export default function App() {
       const pct = d.total > 0 ? Math.round((d.score / d.total) * 100) : 0;
       const activeTasks = d.status === "active" || d.status === "locked";
       const tasksJson = activeTasks
-        ? JSON.stringify(d.tasks.map((t) => ({ done: t.completed, title: t.title, weight: t.weight })))
+        ? JSON.stringify(
+            [...d.tasks]
+              .sort((a, b) => b.weight - a.weight)
+              .slice(0, 4)
+              .map((t) => ({ done: t.completed, title: t.title, weight: t.weight }))
+          )
         : "[]";
       const writes = [
         Preferences.set({ key: "sd_status", value: d.status }),
