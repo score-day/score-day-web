@@ -77,18 +77,47 @@
             android:layout_marginEnd="4dp"
             android:background="#2d2a4a" />
 
-        <!-- Right panel: scrollable task list OR status label -->
-
-        <!-- Task ListView (shown when active/locked) -->
-        <ListView
+        <!-- Right panel: static task rows (shown when active/locked) -->
+        <LinearLayout
             android:id="@+id/widget_task_list"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:divider="@null"
-            android:dividerHeight="0dp"
-            android:scrollbars="none"
-            android:fadeScrollbars="true" />
+            android:orientation="vertical"
+            android:gravity="center_vertical"
+            android:visibility="gone">
+
+            <LinearLayout android:id="@+id/task_row_0" android:layout_width="match_parent" android:layout_height="22dp" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="6dp" android:paddingEnd="6dp" android:visibility="gone">
+                <TextView android:id="@+id/task_check_0" android:layout_width="14dp" android:layout_height="wrap_content" android:textSize="10sp" android:textStyle="bold" android:includeFontPadding="false" />
+                <TextView android:id="@+id/task_title_0" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textSize="10sp" android:maxLines="1" android:ellipsize="end" android:paddingStart="5dp" android:includeFontPadding="false" />
+                <TextView android:id="@+id/task_weight_0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="9sp" android:paddingStart="6dp" android:includeFontPadding="false" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/task_row_1" android:layout_width="match_parent" android:layout_height="22dp" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="6dp" android:paddingEnd="6dp" android:visibility="gone">
+                <TextView android:id="@+id/task_check_1" android:layout_width="14dp" android:layout_height="wrap_content" android:textSize="10sp" android:textStyle="bold" android:includeFontPadding="false" />
+                <TextView android:id="@+id/task_title_1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textSize="10sp" android:maxLines="1" android:ellipsize="end" android:paddingStart="5dp" android:includeFontPadding="false" />
+                <TextView android:id="@+id/task_weight_1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="9sp" android:paddingStart="6dp" android:includeFontPadding="false" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/task_row_2" android:layout_width="match_parent" android:layout_height="22dp" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="6dp" android:paddingEnd="6dp" android:visibility="gone">
+                <TextView android:id="@+id/task_check_2" android:layout_width="14dp" android:layout_height="wrap_content" android:textSize="10sp" android:textStyle="bold" android:includeFontPadding="false" />
+                <TextView android:id="@+id/task_title_2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textSize="10sp" android:maxLines="1" android:ellipsize="end" android:paddingStart="5dp" android:includeFontPadding="false" />
+                <TextView android:id="@+id/task_weight_2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="9sp" android:paddingStart="6dp" android:includeFontPadding="false" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/task_row_3" android:layout_width="match_parent" android:layout_height="22dp" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="6dp" android:paddingEnd="6dp" android:visibility="gone">
+                <TextView android:id="@+id/task_check_3" android:layout_width="14dp" android:layout_height="wrap_content" android:textSize="10sp" android:textStyle="bold" android:includeFontPadding="false" />
+                <TextView android:id="@+id/task_title_3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textSize="10sp" android:maxLines="1" android:ellipsize="end" android:paddingStart="5dp" android:includeFontPadding="false" />
+                <TextView android:id="@+id/task_weight_3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="9sp" android:paddingStart="6dp" android:includeFontPadding="false" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/task_row_4" android:layout_width="match_parent" android:layout_height="22dp" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="6dp" android:paddingEnd="6dp" android:visibility="gone">
+                <TextView android:id="@+id/task_check_4" android:layout_width="14dp" android:layout_height="wrap_content" android:textSize="10sp" android:textStyle="bold" android:includeFontPadding="false" />
+                <TextView android:id="@+id/task_title_4" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textSize="10sp" android:maxLines="1" android:ellipsize="end" android:paddingStart="5dp" android:includeFontPadding="false" />
+                <TextView android:id="@+id/task_weight_4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="9sp" android:paddingStart="6dp" android:includeFontPadding="false" />
+            </LinearLayout>
+
+        </LinearLayout>
 
         <!-- Empty-state label (shown for planning / rest day) -->
         <TextView

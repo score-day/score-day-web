@@ -38,12 +38,6 @@
                 android:resource="@xml/score_day_widget_info" />
         </receiver>
 
-        <!-- RemoteViews service for widget task list -->
-        <service
-            android:name=".ScoreDayWidgetService"
-            android:permission="android.permission.BIND_REMOTEVIEWS"
-            android:exported="false" />
-
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
