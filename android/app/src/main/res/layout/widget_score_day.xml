@@ -69,8 +69,8 @@
 
         </LinearLayout>
 
-        <!-- Vertical divider -->
-        <View
+        <!-- Vertical divider — View base class is blocked in Android 15 RemoteViews, use TextView -->
+        <TextView
             android:layout_width="1dp"
             android:layout_height="match_parent"
             android:layout_marginStart="4dp"
