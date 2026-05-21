@@ -21,7 +21,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="SCORE DAY"
-            android:textColor="#3d3d5c"
+            android:textColor="#6b6b8a"
             android:textSize="8sp"
             android:letterSpacing="0.12" />
 
@@ -54,7 +54,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="#a78bfa"
-                android:textSize="32sp"
+                android:textSize="36sp"
                 android:textStyle="bold"
                 android:includeFontPadding="false" />
 
@@ -62,7 +62,7 @@
                 android:id="@+id/widget_sub"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="#555577"
+                android:textColor="#7a7a9a"
                 android:textSize="9sp"
                 android:layout_marginTop="2dp"
                 android:includeFontPadding="false" />
