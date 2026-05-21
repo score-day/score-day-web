@@ -26,6 +26,16 @@
             android:letterSpacing="0.12" />
 
         <TextView
+            android:id="@+id/widget_refresh"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="↻"
+            android:textColor="#6b6b8a"
+            android:textSize="14sp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp" />
+
+        <TextView
             android:id="@+id/widget_streak"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

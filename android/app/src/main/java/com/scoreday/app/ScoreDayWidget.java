@@ -16,6 +16,8 @@ import org.json.JSONObject;
 
 public class ScoreDayWidget extends AppWidgetProvider {
 
+    static final String ACTION_REFRESH = "com.scoreday.app.WIDGET_REFRESH";
+
     private static final String PREFS      = "CapacitorStorage";
     private static final String KEY_SCORE  = "sd_score";
     private static final String KEY_STREAK = "sd_streak";
@@ -38,7 +40,8 @@ public class ScoreDayWidget extends AppWidgetProvider {
     @Override
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
-        if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
+        String action = intent.getAction();
+        if (Intent.ACTION_BOOT_COMPLETED.equals(action) || ACTION_REFRESH.equals(action)) {
             AppWidgetManager mgr = AppWidgetManager.getInstance(context);
             ComponentName cn = new ComponentName(context, ScoreDayWidget.class);
             for (int id : mgr.getAppWidgetIds(cn)) {
@@ -136,6 +139,14 @@ public class ScoreDayWidget extends AppWidgetProvider {
 
             views.setTextViewText(R.id.widget_empty_label, emptyText);
         }
+
+        // ↻ button → re-read SharedPreferences and redraw (no app open needed)
+        Intent refreshIntent = new Intent(context, ScoreDayWidget.class);
+        refreshIntent.setAction(ACTION_REFRESH);
+        PendingIntent refreshPi = PendingIntent.getBroadcast(
+            context, 1, refreshIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        views.setOnClickPendingIntent(R.id.widget_refresh, refreshPi);
 
         // Tap anywhere → open app
         Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
