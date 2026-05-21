@@ -117,7 +117,7 @@ public class ScoreDayWidget extends AppWidgetProvider {
                     views.setTextViewText(CHECK_IDS[i],  done ? "✓" : "○");
                     views.setTextColor(CHECK_IDS[i],     done ? Color.parseColor("#a78bfa") : Color.parseColor("#555577"));
                     views.setTextViewText(TITLE_IDS[i],  title);
-                    views.setTextColor(TITLE_IDS[i],     done ? Color.parseColor("#7a7a9a") : Color.parseColor("#c4b5fd"));
+                    views.setTextColor(TITLE_IDS[i],     done ? Color.parseColor("#4a4a6a") : Color.parseColor("#e8e8f0"));
                     views.setTextViewText(WEIGHT_IDS[i], String.valueOf(weight));
                     views.setTextColor(WEIGHT_IDS[i],    Color.parseColor("#555577"));
                 } else {
