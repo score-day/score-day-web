@@ -44,6 +44,11 @@ export default function ProfilePage({ theme, onThemeChange, onLogout }: Props) {
   const [chalBusy, setChalBusy] = useState(false);
   const [chalErr, setChalErr] = useState<string | null>(null);
 
+  // Delete account state
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteErr, setDeleteErr] = useState<string | null>(null);
+
   // Assign task state
   const [assigningId, setAssigningId] = useState<number | null>(null);
   const [assignTitle, setAssignTitle] = useState("");
@@ -578,14 +583,57 @@ export default function ProfilePage({ theme, onThemeChange, onLogout }: Props) {
         </div>
       </section>
 
-      {/* ── Sign out ── */}
-      <section className="border-t sd-divider pt-6 pb-2">
+      {/* ── Sign out + Delete account ── */}
+      <section className="border-t sd-divider pt-6 pb-2 space-y-3">
         <button
           onClick={onLogout}
           className="w-full py-2.5 rounded-lg border border-red-900/50 text-red-400 text-sm font-medium hover:bg-red-950/30 transition"
         >
           Sign out
         </button>
+
+        {!confirmDelete ? (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="w-full py-2 text-xs sd-text-4 hover:text-red-400 transition underline"
+          >
+            Delete account
+          </button>
+        ) : (
+          <div className="rounded-lg border border-red-900/60 bg-red-950/20 p-4 space-y-3">
+            <div className="text-sm font-semibold text-red-400">Delete your account?</div>
+            <div className="text-xs sd-text-3 leading-relaxed">
+              This permanently deletes your account, all tasks, scores, streaks, friends, and challenges. <span className="text-red-400 font-medium">This cannot be undone.</span>
+            </div>
+            {deleteErr && <div className="text-xs text-red-400">{deleteErr}</div>}
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  setDeleting(true);
+                  setDeleteErr(null);
+                  try {
+                    await api.deleteAccount();
+                    onLogout();
+                  } catch (e) {
+                    setDeleteErr((e as Error).message);
+                    setDeleting(false);
+                  }
+                }}
+                disabled={deleting}
+                className="flex-1 py-2 rounded text-xs font-semibold bg-red-900/50 text-red-300 hover:bg-red-900/70 transition disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Yes, delete everything"}
+              </button>
+              <button
+                onClick={() => { setConfirmDelete(false); setDeleteErr(null); }}
+                disabled={deleting}
+                className="flex-1 py-2 rounded text-xs sd-btn-surface sd-text-3"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

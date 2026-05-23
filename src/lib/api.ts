@@ -268,6 +268,8 @@ export const api = {
   setDeviceToken: (token: string) =>
     req<void>("/api/me/device-token", { method: "PUT", body: JSON.stringify({ token }) }),
 
+  deleteAccount: () => req<void>("/api/me", { method: "DELETE" }),
+
   // ── Challenges ──
   challenges: () => req<Challenge[]>("/api/challenges"),
   sendChallenge: (receiver_player_id: string, threshold: number, days: number) =>
