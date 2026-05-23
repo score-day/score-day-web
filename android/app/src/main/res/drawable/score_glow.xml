@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Soft lime glow placed in the top-right of the score tile.
+     Uses a radial gradient on a transparent shape. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <gradient
+        android:type="radial"
+        android:gradientRadius="80"
+        android:startColor="#33c6f24e"
+        android:endColor="#00c6f24e" />
+</shape>

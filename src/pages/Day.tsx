@@ -67,10 +67,11 @@ function parseSmartInput(text: string): { title: string; weight: number | null; 
   }
 
   // Trailing standalone number ("workout 40" but not "workout40")
+  // Captures the leading whitespace explicitly instead of lookbehind (ES2018, fails on WebView < API 28).
   if (weight === null) {
-    const numMatch = raw.match(/(?<=\s)(\d+)$/);
+    const numMatch = raw.match(/(\s)(\d+)$/);
     if (numMatch) {
-      const n = parseInt(numMatch[1]);
+      const n = parseInt(numMatch[2]);
       if (n >= 1 && n <= 9999) {
         weight = n;
         raw = raw.slice(0, raw.length - numMatch[0].length).trim();
@@ -121,14 +122,88 @@ function CategoryBadge({ category, theme }: { category: string | null; theme: Th
 }
 
 export default function DayPage({ day, onChange, theme, streak }: { day: Day; onChange: () => void; theme: Theme; streak: number }) {
+  const [subTab, setSubTab] = useState<"today" | "tomorrow">("today");
+  const [tomorrowDay, setTomorrowDay] = useState<Day | null>(null);
+  const [tomorrowErr, setTomorrowErr] = useState<string | null>(null);
+  const [tomorrowLoading, setTomorrowLoading] = useState(false);
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const isLateDay = day.date < todayStr;
+  const canSeeTomorrow = day.status === "active" || day.status === "locked";
+
+  async function loadTomorrow() {
+    setTomorrowLoading(true);
+    setTomorrowErr(null);
+    try {
+      setTomorrowDay(await api.tomorrow());
+    } catch (e) {
+      setTomorrowErr((e as Error).message);
+    } finally {
+      setTomorrowLoading(false);
+    }
+  }
+
+  function handleTomorrowTab() {
+    setSubTab("tomorrow");
+    if (!tomorrowDay && !tomorrowLoading) loadTomorrow();
+  }
+
   if (day.status === "planning") return <PlanView day={day} onChange={onChange} theme={theme} />;
   if (day.status === "rest") return <RestView day={day} />;
-  return <ActiveView day={day} onChange={onChange} theme={theme} streak={streak} />;
+
+  // Active or locked
+  return (
+    <div className="space-y-6">
+      {isLateDay && day.status === "active" && (
+        <div className="rounded-md border border-amber-800 bg-amber-950/40 px-3 py-2 text-sm text-amber-300 flex items-center gap-2">
+          <span>⏳</span>
+          <span>Late-lock window — closes at 3 PM today</span>
+        </div>
+      )}
+
+      {canSeeTomorrow && (
+        <div className="flex gap-1 p-1 rounded-lg bg-[var(--surface-1)] border sd-border">
+          <button
+            onClick={() => setSubTab("today")}
+            className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
+              subTab === "today" ? "sd-btn-accent" : "sd-text-3 hover:text-[var(--text-2)]"
+            }`}
+          >
+            Today
+          </button>
+          <button
+            onClick={handleTomorrowTab}
+            className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
+              subTab === "tomorrow" ? "sd-btn-accent" : "sd-text-3 hover:text-[var(--text-2)]"
+            }`}
+          >
+            Tomorrow
+          </button>
+        </div>
+      )}
+
+      {subTab === "today" && <ActiveView day={day} onChange={onChange} theme={theme} streak={streak} />}
+      {subTab === "tomorrow" && (
+        tomorrowLoading ? (
+          <div className="sd-text-3 text-sm">Loading tomorrow's plan…</div>
+        ) : tomorrowErr ? (
+          <div className="text-sm text-red-400">{tomorrowErr}</div>
+        ) : tomorrowDay ? (
+          <PlanView
+            day={tomorrowDay}
+            onChange={() => { api.tomorrow().then(setTomorrowDay).catch(() => {}); }}
+            theme={theme}
+            isTomorrow
+          />
+        ) : null
+      )}
+    </div>
+  );
 }
 
 // ---------- planning ----------
 
-function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; theme: Theme }) {
+function PlanView({ day, onChange, theme, isTomorrow = false }: { day: Day; onChange: () => void; theme: Theme; isTomorrow?: boolean }) {
   const [title, setTitle] = useState("");
   const [weight, setWeight] = useState<number | "">("");
   const [category, setCategory] = useState("");
@@ -148,8 +223,8 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
 
   useEffect(() => {
     loadTemplates().then(() => setTemplates(getTemplates()));
-    api.friendTasksInbox().then(setInbox).catch(() => {});
-  }, []);
+    if (!isTomorrow) api.friendTasksInbox().then(setInbox).catch(() => {});
+  }, [isTomorrow]);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -287,9 +362,7 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
     setBusy(true);
     setErr(null);
     try {
-      for (const t of tpl.tasks) {
-        await api.addTask(day.id, t.title, t.weight, t.category);
-      }
+      await Promise.all(tpl.tasks.map((t) => api.addTask(day.id, t.title, t.weight, t.category)));
       onChange();
     } catch (e) {
       onChange(); // refresh to show any tasks that were added before the failure
@@ -299,22 +372,30 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
     }
   }
 
-  function handleSaveTemplate() {
+  async function handleSaveTemplate() {
     if (!saveName.trim() || day.tasks.length === 0) return;
     const tpl: Template = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2),
       name: saveName.trim(),
       tasks: day.tasks.map((t) => ({ title: t.title, weight: t.weight, category: t.category })),
     };
-    saveTemplate(tpl);
-    setTemplates(getTemplates());
-    setSaveName("");
-    setSaving(false);
+    try {
+      await saveTemplate(tpl);
+      setTemplates(getTemplates());
+      setSaveName("");
+      setSaving(false);
+    } catch {
+      setErr("Failed to save template — please try again");
+    }
   }
 
-  function handleDeleteTemplate(id: string) {
-    deleteTemplate(id);
-    setTemplates(getTemplates());
+  async function handleDeleteTemplate(id: string) {
+    try {
+      await deleteTemplate(id);
+      setTemplates(getTemplates());
+    } catch {
+      setErr("Failed to delete template — please try again");
+    }
   }
 
   async function handleAcceptInboxTask(ft: FriendTask) {
@@ -345,8 +426,8 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
   return (
     <div className="space-y-6">
 
-      {/* ── Friend task inbox ── */}
-      {inbox.length > 0 && (
+      {/* ── Friend task inbox (today only — backend assigns to today's day) ── */}
+      {!isTomorrow && inbox.length > 0 && (
         <section>
           <h2 className="text-xs uppercase tracking-wider sd-text-3 mb-2">{SOCIAL_COPY[theme].inbox}</h2>
           <div className="space-y-2">
@@ -380,7 +461,7 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
       )}
 
       <div>
-        <div className="text-sm sd-text-3">Plan your day · {day.date}</div>
+        <div className="text-sm sd-text-3">{isTomorrow ? "Tomorrow's plan" : "Plan your day"} · {day.date}</div>
         <div className="mt-1 flex items-baseline gap-3">
           <div className="text-3xl font-semibold tabular-nums">
             {used} <span className="sd-text-3 text-xl">pts planned</span>
@@ -394,7 +475,7 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
       </div>
 
       <section>
-        <h2 className="text-xs uppercase tracking-wider sd-text-3 mb-2">Today's tasks</h2>
+        <h2 className="text-xs uppercase tracking-wider sd-text-3 mb-2">{isTomorrow ? "Tomorrow's tasks" : "Today's tasks"}</h2>
         {day.tasks.length === 0 ? (
           <div className="rounded-xl border border-dashed sd-border bg-[var(--surface-1)] px-6 py-10 text-center">
             <div className="text-3xl mb-3">📋</div>
@@ -421,6 +502,7 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
                     <input
                       type="number"
                       min={1}
+                      max={9999}
                       value={editWeight}
                       onChange={(e) => setEditWeight(e.target.value === "" ? "" : Number(e.target.value))}
                       onKeyDown={(e) => e.key === "Escape" && handleEditCancel()}
@@ -628,6 +710,7 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
                 <input
                   type="number"
                   min={1}
+                  max={9999}
                   value={weight}
                   onChange={(e) => setWeight(e.target.value === "" ? "" : Number(e.target.value))}
                   placeholder="pts"
@@ -662,29 +745,31 @@ function PlanView({ day, onChange, theme }: { day: Day; onChange: () => void; th
 
       {err && <div className="text-sm text-red-400">{err}</div>}
 
-      <div className="pt-4 border-t sd-divider space-y-2">
-        <button
-          onClick={handleStart}
-          disabled={!canStart || busy}
-          className={
-            "w-full py-3 rounded-md text-sm font-medium transition " +
-            (canStart
-              ? "sd-btn-accent"
-              : "bg-[var(--surface-2)] text-[var(--text-3)] cursor-not-allowed")
-          }
-        >
-          {canStart ? "Start day" : "Add at least one task to start"}
-        </button>
-        <button
-          onClick={() => setShowRestModal(true)}
-          disabled={busy}
-          className="w-full py-2 rounded-md text-xs sd-text-4 hover:text-[var(--text-3)] transition"
-        >
-          Taking a rest day?
-        </button>
-      </div>
+      {!isTomorrow && (
+        <div className="pt-4 border-t sd-divider space-y-2">
+          <button
+            onClick={handleStart}
+            disabled={!canStart || busy}
+            className={
+              "w-full py-3 rounded-md text-sm font-medium transition " +
+              (canStart
+                ? "sd-btn-accent"
+                : "bg-[var(--surface-2)] text-[var(--text-3)] cursor-not-allowed")
+            }
+          >
+            {canStart ? "Start day" : "Add at least one task to start"}
+          </button>
+          <button
+            onClick={() => setShowRestModal(true)}
+            disabled={busy}
+            className="w-full py-2 rounded-md text-xs sd-text-4 hover:text-[var(--text-3)] transition"
+          >
+            Taking a rest day?
+          </button>
+        </div>
+      )}
 
-      <FriendsFeed theme={theme} />
+      {!isTomorrow && <FriendsFeed theme={theme} />}
 
       {showRestModal && (
         <RestDayModal
@@ -722,17 +807,67 @@ function ActiveView({ day, onChange, theme, streak }: { day: Day; onChange: () =
   const [err, setErr] = useState<string | null>(null);
   const [showLockModal, setShowLockModal] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [inbox, setInbox] = useState<FriendTask[]>([]);
+  const [inboxBusy, setInboxBusy] = useState(false);
+  const [tasks, setTasks] = useState<Task[]>(day.tasks);
   const isLocked = day.status === "locked";
+  const inboxIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // When the server sends fresh day data (after onChange/refresh), resync local task state.
+  useEffect(() => { setTasks(day.tasks); }, [day]);
+
+  useEffect(() => {
+    if (isLocked) return;
+    function fetchInbox() {
+      if (!isOnline()) return;
+      api.friendTasksInbox().then(setInbox).catch(() => {});
+    }
+    fetchInbox();
+    inboxIntervalRef.current = setInterval(fetchInbox, 60_000);
+    return () => { if (inboxIntervalRef.current) clearInterval(inboxIntervalRef.current); };
+  }, [isLocked]);
+
+  async function handleAcceptInboxTask(ft: FriendTask) {
+    setInboxBusy(true);
+    try {
+      await api.acceptFriendTask(ft.id);
+      setInbox((prev) => prev.filter((x) => x.id !== ft.id));
+      onChange();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setInboxBusy(false);
+    }
+  }
+
+  async function handleDeclineInboxTask(ft: FriendTask) {
+    setInboxBusy(true);
+    try {
+      await api.declineFriendTask(ft.id);
+      setInbox((prev) => prev.filter((x) => x.id !== ft.id));
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setInboxBusy(false);
+    }
+  }
 
   async function toggle(t: Task) {
     if (isLocked) return;
-    setBusy(true);
+    const next = !t.completed;
+    setTasks(prev => prev.map(task => task.id === t.id ? { ...task, completed: next } : task));
     setErr(null);
+    setBusy(true);
     try {
-      await api.updateTask(t.id, { completed: !t.completed });
+      await api.updateTask(t.id, { completed: next });
       onChange();
     } catch (e) {
-      if (!(e instanceof OfflineError)) setErr((e as Error).message);
+      if (e instanceof OfflineError) {
+        // Queued for sync — keep the optimistic flip so user sees their intent
+      } else {
+        setTasks(prev => prev.map(task => task.id === t.id ? { ...task, completed: t.completed } : task));
+        setErr((e as Error).message);
+      }
     } finally {
       setBusy(false);
     }
@@ -758,7 +893,7 @@ function ActiveView({ day, onChange, theme, streak }: { day: Day; onChange: () =
     }
   }
 
-  const score = day.tasks.filter((t) => t.completed).reduce((s, t) => s + t.weight, 0);
+  const score = tasks.filter((t) => t.completed).reduce((s, t) => s + t.weight, 0);
   const pct = day.total > 0 ? Math.round((score / day.total) * 100) : 0;
 
   async function handleShare() {
@@ -770,7 +905,7 @@ function ActiveView({ day, onChange, theme, streak }: { day: Day; onChange: () =
         total: day.total,
         pct,
         streak,
-        tasks: day.tasks.map((t) => ({ title: t.title, completed: t.completed, weight: t.weight })),
+        tasks: tasks.map((t) => ({ title: t.title, completed: t.completed, weight: t.weight })),
       });
     } catch {
       // User cancelled share or share not supported — silently ignore
@@ -786,6 +921,39 @@ function ActiveView({ day, onChange, theme, streak }: { day: Day; onChange: () =
 
   return (
     <div className="space-y-6">
+      {!isLocked && inbox.length > 0 && (
+        <section>
+          <h2 className="text-xs uppercase tracking-wider sd-text-3 mb-2">{SOCIAL_COPY[theme].inbox}</h2>
+          <div className="space-y-2">
+            {inbox.map((ft) => (
+              <div key={ft.id} className="rounded-lg border sd-border bg-[var(--surface-1)] px-3 py-3 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] sd-text-4 mb-0.5">
+                    {ft.sender_username || ft.sender_player_id} {SOCIAL_COPY[theme].wants}
+                  </div>
+                  <div className="text-sm font-medium sd-text-1 truncate">{ft.title}</div>
+                  <div className="text-xs sd-text-3 mt-0.5">{ft.weight} pts</div>
+                </div>
+                <button
+                  onClick={() => handleAcceptInboxTask(ft)}
+                  disabled={inboxBusy}
+                  className="text-xs px-2.5 py-1.5 rounded sd-btn-accent font-medium shrink-0"
+                >
+                  Add
+                </button>
+                <button
+                  onClick={() => handleDeclineInboxTask(ft)}
+                  disabled={inboxBusy}
+                  className="text-xs sd-text-4 hover:text-[var(--text-2)] shrink-0"
+                >
+                  Skip
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div>
         <div className="text-sm sd-text-3">
           {isLocked ? "Final score" : "Today"} · {day.date}
@@ -817,7 +985,7 @@ function ActiveView({ day, onChange, theme, streak }: { day: Day; onChange: () =
       </div>
 
       <ul className="divide-y sd-border rounded-md border sd-border">
-        {day.tasks.map((t) => (
+        {tasks.map((t) => (
           <li
             key={t.id}
             onClick={() => toggle(t)}

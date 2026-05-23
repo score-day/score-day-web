@@ -1,18 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Root widget background: deep charcoal, rounded 28dp, 1px hairline border -->
+<!-- Score hero tile: subtle linear gradient + 1px border, 20dp radius -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#16161c" />
-            <corners android:radius="28dp" />
+            <solid android:color="#1f1f28" />
+            <corners android:radius="20dp" />
         </shape>
     </item>
     <item
         android:left="1dp" android:top="1dp"
         android:right="1dp" android:bottom="1dp">
         <shape android:shape="rectangle">
-            <solid android:color="#0a0a0d" />
-            <corners android:radius="27dp" />
+            <gradient
+                android:angle="135"
+                android:startColor="#1a1a22"
+                android:endColor="#0f0f14" />
+            <corners android:radius="19dp" />
         </shape>
     </item>
 </layer-list>

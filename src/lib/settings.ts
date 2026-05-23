@@ -27,8 +27,8 @@ export function setThreshold(v: number): void {
   _threshold = v;
   if (IS_NATIVE) {
     import("@capacitor/preferences").then(({ Preferences }) => {
-      Preferences.set({ key: KEY, value: String(v) });
-    });
+      Preferences.set({ key: KEY, value: String(v) }).catch(() => {});
+    }).catch(() => {});
   } else {
     localStorage.setItem(KEY, String(v));
   }

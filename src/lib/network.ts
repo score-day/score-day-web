@@ -35,7 +35,9 @@ export async function initNetwork(): Promise<void> {
     Network.addListener("networkStatusChange", (s) => _notify(s.connected));
   } else {
     _online = navigator.onLine;
-    window.addEventListener("online", () => _notify(true));
-    window.addEventListener("offline", () => _notify(false));
+    const _onOnline = () => _notify(true);
+    const _onOffline = () => _notify(false);
+    window.addEventListener("online", _onOnline);
+    window.addEventListener("offline", _onOffline);
   }
 }

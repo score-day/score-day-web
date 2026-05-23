@@ -13,6 +13,7 @@ const _dropListeners = new Set<DropListener>();
 
 let _syncing = false;
 let _autoStarted = false;
+let _sessionId = 0;
 let _cleanupNetwork: (() => void) | null = null;
 let _cleanupForeground: (() => void) | null = null;
 
@@ -134,6 +135,7 @@ export function resetAutoSync(): void {
 export function initAutoSync(): void {
   if (_autoStarted) return;
   _autoStarted = true;
+  const mySession = ++_sessionId;
 
   // Sync when network comes back online
   _cleanupNetwork = addNetworkListener((online) => {
@@ -146,8 +148,9 @@ export function initAutoSync(): void {
       App.addListener("appStateChange", (state) => {
         if (state.isActive) syncNow().catch(() => {});
       }).then((handle) => {
-        // If resetAutoSync() was called before this handle resolved, remove immediately.
-        if (!_autoStarted) {
+        // Session ID mismatch means resetAutoSync()+initAutoSync() ran before this handle
+        // resolved — the new session already owns _cleanupForeground, so discard stale handle.
+        if (_sessionId !== mySession) {
           handle.remove();
         } else {
           _cleanupForeground = () => { handle.remove(); };

@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Root widget background: deep charcoal, rounded 28dp, 1px hairline border -->
+<!-- Small secondary tile: streak, tier, tasks -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#16161c" />
-            <corners android:radius="28dp" />
+            <solid android:color="#1c1c24" />
+            <corners android:radius="14dp" />
         </shape>
     </item>
     <item
         android:left="1dp" android:top="1dp"
         android:right="1dp" android:bottom="1dp">
         <shape android:shape="rectangle">
-            <solid android:color="#0a0a0d" />
-            <corners android:radius="27dp" />
+            <solid android:color="#111116" />
+            <corners android:radius="13dp" />
         </shape>
     </item>
 </layer-list>

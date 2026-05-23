@@ -8,6 +8,7 @@ export function usePushNotifications(onNavigate?: (tab: string) => void) {
     if (!Capacitor.isNativePlatform()) return;
 
     let registered = false;
+    const handles: { remove: () => void }[] = [];
 
     async function setup() {
       const { receive } = await PushNotifications.requestPermissions();
@@ -15,22 +16,22 @@ export function usePushNotifications(onNavigate?: (tab: string) => void) {
 
       await PushNotifications.register();
 
-      PushNotifications.addListener("registration", ({ value: token }) => {
+      handles.push(await PushNotifications.addListener("registration", ({ value: token }) => {
         if (registered) return;
         registered = true;
         api.setDeviceToken(token).catch(() => {});
-      });
+      }));
 
-      PushNotifications.addListener("pushNotificationActionPerformed", ({ notification }) => {
+      handles.push(await PushNotifications.addListener("pushNotificationActionPerformed", ({ notification }) => {
         const tab = notification.data?.tab as string | undefined;
         if (tab && onNavigate) onNavigate(tab);
-      });
+      }));
     }
 
     setup().catch(() => {});
 
     return () => {
-      PushNotifications.removeAllListeners();
+      handles.forEach((h) => h.remove());
     };
   }, [onNavigate]);
 }

@@ -1,12 +1,23 @@
 import type { Theme } from "../lib/theme";
 
-type Tab = "day" | "history" | "profile";
+type Tab = "home" | "day" | "history" | "profile";
 
 const LABELS: Record<Theme, Record<Tab, string>> = {
-  "light":          { day: "Today",  history: "History",    profile: "Profile" },
-  "dark-knight":    { day: "Engage", history: "Objectives", profile: "Dossier" },
-  "solo-leveling":  { day: "Daily",  history: "Quests",     profile: "Status"  },
+  "light":          { home: "Home",    day: "Today",  history: "History",    profile: "Profile" },
+  "dark-knight":    { home: "HQ",      day: "Engage", history: "Objectives", profile: "Dossier" },
+  "solo-leveling":  { home: "Hub",     day: "Daily",  history: "Quests",     profile: "Status"  },
 };
+
+function IconHome({ active }: { active: boolean }) {
+  const w = active ? 2 : 1.5;
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12L12 4L21 12"/>
+      <path d="M5 10V20H9V15H15V20H19V10"/>
+    </svg>
+  );
+}
 
 function IconDay({ active }: { active: boolean }) {
   const w = active ? 2 : 1.5;
@@ -55,6 +66,7 @@ export default function BottomNav({ tab, setTab, theme }: Props) {
   const labels = LABELS[theme];
 
   const items: { id: Tab; label: string; Icon: React.FC<{ active: boolean }> }[] = [
+    { id: "home",    label: labels.home,    Icon: IconHome    },
     { id: "day",     label: labels.day,     Icon: IconDay     },
     { id: "history", label: labels.history, Icon: IconHistory },
     { id: "profile", label: labels.profile, Icon: IconProfile },

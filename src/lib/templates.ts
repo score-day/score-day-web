@@ -8,11 +8,16 @@ let _templates: Template[] = [];
 
 async function persist(): Promise<void> {
   const json = JSON.stringify(_templates);
-  if (IS_NATIVE) {
-    const { Preferences } = await import("@capacitor/preferences");
-    await Preferences.set({ key: KEY, value: json });
-  } else {
-    localStorage.setItem(KEY, json);
+  try {
+    if (IS_NATIVE) {
+      const { Preferences } = await import("@capacitor/preferences");
+      await Preferences.set({ key: KEY, value: json });
+    } else {
+      localStorage.setItem(KEY, json);
+    }
+  } catch (err) {
+    console.error("[templates] persist failed:", err);
+    throw err;
   }
 }
 
@@ -34,12 +39,12 @@ export function getTemplates(): Template[] {
   return _templates;
 }
 
-export function saveTemplate(t: Template): void {
+export async function saveTemplate(t: Template): Promise<void> {
   _templates = [..._templates.filter((x) => x.id !== t.id), t];
-  persist();
+  await persist();
 }
 
-export function deleteTemplate(id: string): void {
+export async function deleteTemplate(id: string): Promise<void> {
   _templates = _templates.filter((x) => x.id !== id);
-  persist();
+  await persist();
 }

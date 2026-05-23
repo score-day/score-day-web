@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
-    <cache-path name="my_cache_images" path="." />
+    <!-- Score card PNGs are written to the root of the internal cache directory
+         via Capacitor Filesystem (Directory.Cache). External storage is not used. -->
+    <cache-path name="scoreday_cache" path="." />
 </paths>

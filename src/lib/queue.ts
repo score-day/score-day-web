@@ -34,7 +34,9 @@ async function _load(): Promise<void> {
 async function _persist(): Promise<void> {
   try {
     await Preferences.set({ key: QUEUE_KEY, value: JSON.stringify(_queue) });
-  } catch {}
+  } catch (err) {
+    console.error("[queue] persist failed:", err);
+  }
   const snap = [..._queue] as readonly QueuedMutation[];
   _listeners.forEach((fn) => fn(snap));
 }
@@ -98,7 +100,11 @@ export async function clearQueue(): Promise<void> {
 export async function reconcileId(tempId: string, realId: number): Promise<void> {
   await _load();
   if (!_queue.some((m) => JSON.stringify(m).includes(`"${tempId}"`))) return;
-  const patched = JSON.stringify(_queue).split(`"${tempId}"`).join(String(realId));
+  // Target only known ID fields to avoid corrupting text fields (e.g. task title)
+  // that coincidentally contain the tempId string.
+  const escapedId = tempId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`"(tempId|taskId)":\\s*"${escapedId}"`, "g");
+  const patched = JSON.stringify(_queue).replace(pattern, `"$1":${realId}`);
   try {
     _queue = JSON.parse(patched) as QueuedMutation[];
     await _persist();

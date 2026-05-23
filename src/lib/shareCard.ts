@@ -168,7 +168,8 @@ function buildCanvas(data: ScoreCardData): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas 2D context unavailable");
   drawCard(ctx, data);
   return canvas;
 }
@@ -196,16 +197,21 @@ export async function shareScoreCard(data: ScoreCardData): Promise<void> {
     // Web: try File Share API, fallback to download.
     canvas.toBlob(async (blob) => {
       if (!blob) return;
-      const file = new File([blob], `scoreday-${data.date}.png`, { type: "image/png" });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: `Score Day — ${data.pct}%` });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `scoreday-${data.date}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
+      try {
+        const file = new File([blob], `scoreday-${data.date}.png`, { type: "image/png" });
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: `Score Day — ${data.pct}%` });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `scoreday-${data.date}.png`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
+        throw err;
       }
     }, "image/png");
   }

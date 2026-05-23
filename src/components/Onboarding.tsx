@@ -1,13 +1,36 @@
 import { useState } from "react";
+import { Capacitor } from "@capacitor/core";
 
 const ONBOARDED_KEY = "score-day-onboarded";
+const IS_NATIVE = Capacitor.isNativePlatform();
+
+// In-memory cache hydrated by initOnboarding() at startup.
+// Defaults to localStorage so the synchronous useState initializer still works.
+let _onboarded = localStorage.getItem(ONBOARDED_KEY) === "1";
+
+// Called once at app startup. On native, checks Capacitor Preferences (native
+// SharedPreferences) in addition to localStorage so the flag survives a WebView
+// data clear from Android Settings.
+export async function initOnboarding(): Promise<void> {
+  if (IS_NATIVE && !_onboarded) {
+    const { Preferences } = await import("@capacitor/preferences");
+    const { value } = await Preferences.get({ key: ONBOARDED_KEY });
+    _onboarded = value === "1";
+  }
+}
 
 export function hasOnboarded(): boolean {
-  return localStorage.getItem(ONBOARDED_KEY) === "1";
+  return _onboarded;
 }
 
 function markOnboarded() {
+  _onboarded = true;
   localStorage.setItem(ONBOARDED_KEY, "1");
+  if (IS_NATIVE) {
+    import("@capacitor/preferences").then(({ Preferences }) => {
+      Preferences.set({ key: ONBOARDED_KEY, value: "1" }).catch(() => {});
+    }).catch(() => {});
+  }
 }
 
 interface Props {

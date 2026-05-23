@@ -574,7 +574,7 @@ export default function ProfilePage({ theme, onThemeChange, onLogout }: Props) {
         <div className="text-xs uppercase tracking-wider sd-text-3 mb-3">About</div>
         <div className="space-y-1 text-sm sd-text-3">
           <p>Score Day — rate your productivity, one day at a time.</p>
-          <p className="sd-text-4 text-xs mt-2">v2.9.4</p>
+          <p className="sd-text-4 text-xs mt-2">v{__APP_VERSION__}</p>
         </div>
       </section>
 

@@ -16,11 +16,12 @@ import { usePushNotifications } from "./hooks/usePushNotifications";
 import DayPage from "./pages/Day";
 import HistoryPage from "./pages/History";
 import ProfilePage from "./pages/Profile";
+import HomePage from "./pages/Home";
 import AuthPage from "./pages/Auth";
-import Onboarding, { hasOnboarded } from "./components/Onboarding";
+import Onboarding, { hasOnboarded, initOnboarding } from "./components/Onboarding";
 import BottomNav from "./components/BottomNav";
 
-type Tab = "day" | "history" | "profile";
+type Tab = "home" | "day" | "history" | "profile";
 
 // Simple SVG logomark — rounded square with checkmark, accent-colored
 function AppLogo() {
@@ -39,7 +40,7 @@ function AppLogo() {
 }
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>("day");
+  const [tab, setTab] = useState<Tab>("home");
   const [showOnboarding, setShowOnboarding] = useState(() => !hasOnboarded());
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [day, setDay] = useState<Day | null>(null);
@@ -50,21 +51,22 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>(DEFAULT_THEME);
   const { online } = useNetwork();
   const { status: syncStatus, pending: syncPending } = useSyncStatus();
-  const handlePushNavigate = useCallback((tab: string) => setTab(tab as Tab), []);
+  const handlePushNavigate = useCallback((t: string) => setTab(t as Tab), []);
   usePushNotifications(handlePushNavigate);
 
   const refreshRef = useRef<() => void>(() => {});
 
   useEffect(() => {
-    initNetwork();
-    loadToken().then((t) => setAuthed(!!t));
-    loadTheme().then(setTheme);
+    initNetwork().catch(() => {});
+    loadToken().then((t) => setAuthed(!!t)).catch(() => setAuthed(false));
+    loadTheme().then(setTheme).catch(() => {});
     setOnUnauthorized(() => {
       resetAutoSync();
       setAuthed(false);
       setDay(null);
     });
-    loadSettings().then(() => setThreshold(getThreshold()));
+    loadSettings().then(() => setThreshold(getThreshold())).catch(() => {});
+    initOnboarding().then(() => { if (hasOnboarded()) setShowOnboarding(false); }).catch(() => {});
   }, []);
 
   async function refresh() {
@@ -119,6 +121,7 @@ export default function App() {
     return () => {
       removeSyncListener();
       removeDropListener();
+      resetAutoSync();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authed]);
@@ -200,6 +203,14 @@ export default function App() {
           </div>
         )}
 
+        {tab === "home" && (
+          <HomePage
+            day={day}
+            streak={streak}
+            theme={theme}
+            onNavigateToDay={() => setTab("day")}
+          />
+        )}
         {tab === "day" && day && <DayPage day={day} onChange={refresh} theme={theme} streak={streak?.streak ?? 0} />}
         {tab === "day" && !day && <div className="sd-text-3">Loading…</div>}
         {tab === "history" && (
