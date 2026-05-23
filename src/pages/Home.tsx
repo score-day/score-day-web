@@ -129,6 +129,11 @@ export default function HomePage({ day, streak, theme: _theme, onNavigateToDay }
       api.history(7).then(setHistory).catch(() => {}),
       isOnline() ? api.friendsActivity().then(setActivity).catch(() => {}) : Promise.resolve(),
     ]).finally(() => setLoaded(true));
+
+    const id = setInterval(() => {
+      if (isOnline()) api.friendsActivity().then(setActivity).catch(() => {});
+    }, 60_000);
+    return () => clearInterval(id);
   }, []);
 
   const streakCount = streak?.streak ?? 0;

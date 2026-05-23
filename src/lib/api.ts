@@ -172,7 +172,7 @@ export const auth = {
 export const api = {
   // ── Reads — served from cache when offline ──
   today: () => cachedReq<Day>("/api/today"),
-  tomorrow: () => req<Day>("/api/tomorrow"),
+  tomorrow: () => cachedReq<Day>("/api/tomorrow"),
   history: (days = 30) => cachedReq<HistoryEntry[]>(`/api/history?days=${days}`),
   categoryStats: (days = 30) => cachedReq<CategoryStat[]>(`/api/history/categories?days=${days}`),
   streak: (threshold = 80) => cachedReq<Streak>(`/api/streak?threshold=${threshold}`),
