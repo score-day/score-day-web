@@ -162,6 +162,25 @@ export const auth = {
     const { token } = await authReq("/auth/login", { email, password });
     await saveToken(token);
   },
+  loginWithGoogle: async (idToken: string) => {
+    const { token } = await req<{ token: string }>("/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ id_token: idToken }),
+    });
+    await saveToken(token);
+  },
+  forgotPassword: async (email: string) => {
+    await req<{ ok: boolean }>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  },
+  resetPassword: async (email: string, otp: string, newPassword: string) => {
+    await req<{ ok: boolean }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ email, otp, new_password: newPassword }),
+    });
+  },
   logout: async () => {
     await clearQueue();
     await clearToken();

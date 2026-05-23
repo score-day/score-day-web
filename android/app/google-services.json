@@ -12,7 +12,20 @@
           "package_name": "com.scoreday.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "351838017958-rilbkqh25up389balociniddf0lnbl0m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.scoreday.app",
+            "certificate_hash": "1e5bb746b8c140c9dbd74922a66da0113707e527"
+          }
+        },
+        {
+          "client_id": "351838017958-j9ikmm5ngovsc9qda6eprc6bkvvc3pht.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCe-OrlqrXszVQj9xDYwtDsCto2B7_pdq4"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "351838017958-j9ikmm5ngovsc9qda6eprc6bkvvc3pht.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

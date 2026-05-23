@@ -6,7 +6,13 @@ const config: CapacitorConfig = {
   appId: 'com.scoreday.app',
   appName: 'Score Day',
   webDir: 'dist',
-...(isDev && {
+  plugins: {
+    FirebaseAuthentication: {
+      skipNativeAuth: false,
+      providers: ["google.com"],
+    },
+  },
+  ...(isDev && {
     server: {
       url: 'http://10.0.2.2:5173',
       cleartext: true,
